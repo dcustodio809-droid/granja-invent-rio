@@ -1,0 +1,94 @@
+:root {
+  --red: #E2231A;
+  --red-hover: #b81c15;
+  --black: #141414;
+  --text-secondary: rgba(0,0,0,.55);
+  --text-tertiary: rgba(0,0,0,.45);
+  --bg-page: #f4f3f1;
+  --bg-card: #ffffff;
+  --bg-input: #f4f3f1;
+  --bg-tint: #fdeceb;
+  --border: rgba(0,0,0,.06);
+  --border-soft: #f0f0ee;
+  --status-overdue-bg: #141414;
+  --status-overdue-fg: #ffffff;
+  --status-soon-bg: #fdeceb;
+  --status-soon-fg: #E2231A;
+  --status-ok-bg: #f4f3f1;
+  --status-ok-fg: rgba(0,0,0,.55);
+  --radius-card: 14px;
+  --radius-pill: 20px;
+  --shadow-cta: 0 8px 18px rgba(226,35,26,.35);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+  font-family: 'Manrope', system-ui, sans-serif;
+  color: var(--black);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--red); text-decoration: none; }
+a:hover { color: var(--red-hover); }
+
+button, input, select, textarea { font-family: inherit; }
+
+.mono { font-family: 'Roboto Mono', monospace; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 4px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 13.5px;
+  padding: 0 16px;
+  height: 44px;
+  transition: background .15s ease;
+}
+.btn-primary { background: var(--red); color: #fff; box-shadow: var(--shadow-cta); }
+.btn-primary:hover { background: var(--red-hover); }
+.btn-secondary { background: var(--bg-input); color: var(--black); }
+.btn-dark { background: var(--black); color: #fff; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.input {
+  width: 100%;
+  height: 46px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--bg-input);
+  padding: 0 14px;
+  font-size: 14px;
+  color: var(--black);
+}
+.input:focus { outline: 2px solid var(--red); background: #fff; }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 18px 20px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.pill-tint { background: var(--bg-tint); color: var(--red); }
+.pill-neutral { background: var(--bg-input); color: var(--text-secondary); }
