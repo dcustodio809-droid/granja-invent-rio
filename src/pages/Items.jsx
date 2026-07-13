@@ -136,4 +136,86 @@ function AddItemModal({ onClose, onCreated, userId }) {
   const [qty, setQty] = useState(1)
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
-  const [photo, setPhoto]
+  const [photo, setPhoto] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      let photo_url = null
+      if (photo) photo_url = await uploadFile(photo, 'items')
+      await createItem({
+        name,
+        category,
+        brand,
+        serial,
+        qty: Number(qty) || 1,
+        location,
+        description,
+        photo_url,
+        created_by: userId,
+      })
+      onCreated()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <form className="modal-sheet" onClick={(e) => e.stopPropagation()} onSubmit={handleSave}>
+        <div className="modal-title">Novo item</div>
+        <div className="modal-sub">Cadastre um equipamento, veículo, máquina ou ferramenta</div>
+
+        <label className="field-label">Nome</label>
+        <input className="input" style={{ marginBottom: 12 }} value={name} onChange={(e) => setName(e.target.value)} required />
+
+        <label className="field-label">Categoria</label>
+        <select className="input" style={{ marginBottom: 12 }} value={category} onChange={(e) => setCategory(e.target.value)}>
+          {CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
+        </select>
+
+        <div className="field-grid">
+          <div>
+            <label className="field-label">Marca</label>
+            <input className="input" value={brand} onChange={(e) => setBrand(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Nº de série</label>
+            <input className="input mono" value={serial} onChange={(e) => setSerial(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Quantidade</label>
+            <input className="input" type="number" min="0" value={qty} onChange={(e) => setQty(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Localização</label>
+            <input className="input" value={location} onChange={(e) => setLocation(e.target.value)} />
+          </div>
+        </div>
+
+        <label className="field-label">Descrição</label>
+        <textarea className="input" style={{ height: 70, paddingTop: 10, marginBottom: 12 }} value={description} onChange={(e) => setDescription(e.target.value)} />
+
+        <label className={'dropzone' + (photo ? ' attached' : '')}>
+          {photo ? `Foto selecionada: ${photo.name}` : 'ANEXAR FOTO'}
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+        </label>
+
+        {error && <div className="login-error">{error}</div>}
+
+        <div className="modal-actions">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
