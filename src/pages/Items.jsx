@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { CATEGORIES, categoryLabel, createItem, listItems } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import PrintReport from '../components/PrintReport'
 
 const COLUMNS = [
   { key: 'name', label: 'Item' },
@@ -25,6 +26,7 @@ export default function Items() {
   const [showAdd, setShowAdd] = useState(false)
   const [sortKey, setSortKey] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
+  const [selected, setSelected] = useState(new Set())
   const navigate = useNavigate()
   const { user } = useAuth()
 
@@ -44,6 +46,19 @@ export default function Items() {
       setSortKey(key)
       setSortDir('asc')
     }
+  }
+
+  function toggleOne(id) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll(ids) {
+    setSelected((prev) => (prev.size === ids.length ? new Set() : new Set(ids)))
   }
 
   const filtered = useMemo(() => {
@@ -79,8 +94,9 @@ export default function Items() {
       <div className="page-header">
         <div>
           <div className="page-title">Itens</div>
-          <div className="page-subtitle">{filtered.length} item(ns)</div>
+          <div className="page-subtitle">{filtered.length} item(ns){selected.size > 0 ? ` · ${selected.size} selecionado(s)` : ''}</div>
         </div>
+        <button className="btn btn-secondary" onClick={() => window.print()}>Gerar relatório PDF</button>
       </div>
 
       <div className="toolbar">
@@ -119,6 +135,13 @@ export default function Items() {
           <table className="data-table">
             <thead>
               <tr>
+                <th className="select-col">
+                  <input
+                    type="checkbox"
+                    checked={filtered.length > 0 && selected.size === filtered.length}
+                    onChange={() => toggleAll(filtered.map((i) => i.id))}
+                  />
+                </th>
                 <th>Foto</th>
                 {COLUMNS.map((col) => (
                   <th key={col.key} className="sortable-th" onClick={() => handleSort(col.key)}>
@@ -130,6 +153,9 @@ export default function Items() {
             <tbody>
               {filtered.map((item) => (
                 <tr key={item.id} onClick={() => navigate(`/itens/${item.id}`)} style={{ cursor: 'pointer' }}>
+                  <td className="select-col" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
+                  </td>
                   <td>
                     {item.photo_url ? (
                       <img className="table-photo" src={item.photo_url} alt="" />
@@ -149,6 +175,19 @@ export default function Items() {
           </table>
         </div>
       )}
+
+      <PrintReport
+        title="Relatório de Itens"
+        columns={[
+          { key: 'name', label: 'Item' },
+          { key: 'category', label: 'Categoria', render: (r) => categoryLabel(r.category) },
+          { key: 'brand', label: 'Marca' },
+          { key: 'identifier', label: 'Placa / Nº Série', render: (r) => identifierOf(r) || '—' },
+          { key: 'qty', label: 'Qtd' },
+          { key: 'location', label: 'Localização' },
+        ]}
+        rows={selected.size > 0 ? filtered.filter((i) => selected.has(i.id)) : filtered}
+      />
 
       <button className="fab" onClick={() => setShowAdd(true)}>+</button>
 

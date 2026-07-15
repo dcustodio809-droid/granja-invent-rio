@@ -1,0 +1,32 @@
+.print-only { display: none; }
+
+.select-col { width: 34px; text-align: center; }
+.select-col input, td.select-col input { cursor: pointer; width: 16px; height: 16px; }
+
+@media print {
+  body * { visibility: hidden; }
+  .print-only, .print-only * { visibility: visible; }
+  .print-only {
+    display: block;
+    position: absolute;
+    top: 0; left: 0; width: 100%;
+    padding: 0;
+    font-family: 'Manrope', system-ui, sans-serif;
+    color: #141414;
+  }
+  .print-header {
+    display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #141414;
+    padding-bottom: 12px; margin-bottom: 16px;
+  }
+  .print-logo { width: 36px; height: 36px; object-fit: contain; }
+  .print-header-text { flex: 1; }
+  .print-company { font-size: 15px; font-weight: 800; }
+  .print-report-title { font-size: 12px; color: #555; margin-top: 2px; }
+  .print-date { font-size: 10.5px; color: #777; }
+  .print-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .print-table th {
+    text-align: left; padding: 8px 10px; border-bottom: 1.5px solid #141414; font-weight: 700; text-transform: uppercase; font-size: 9.5px;
+  }
+  .print-table td { padding: 7px 10px; border-bottom: 1px solid #ddd; }
+  .print-footer { margin-top: 16px; font-size: 10px; color: #777; text-align: right; }
+}

@@ -81,16 +81,16 @@ export async function createMovement(movement) {
   return data
 }
 
-// Registra uma atualização de estoque: cria a movimentação e atualiza o saldo do material
-export async function registerStockUpdate({ material, newQty, invoiceNumber, purchaseDate, description, responsible, userId }) {
-  const delta = newQty - material.qty
-  if (delta === 0) return null
-  const type = delta > 0 ? 'entrada' : 'saida'
+// Registra uma movimentação de estoque (entrada soma, saída subtrai) e atualiza o saldo do material
+export async function registerStockUpdate({ material, type, amount, invoiceNumber, purchaseDate, description, responsible, userId }) {
+  const qty = Number(amount)
+  if (!qty || qty <= 0) return null
+  const newQty = type === 'entrada' ? Number(material.qty) + qty : Math.max(0, Number(material.qty) - qty)
   const movement = await createMovement({
     material_id: material.id,
     type,
-    qty: Math.abs(delta),
-    invoice_number: invoiceNumber || null,
+    qty,
+    invoice_number: type === 'entrada' ? (invoiceNumber || null) : null,
     purchase_date: purchaseDate || null,
     description: description || null,
     responsible: responsible || '',
