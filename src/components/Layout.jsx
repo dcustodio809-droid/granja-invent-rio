@@ -8,6 +8,11 @@ const NAV_ITEMS = [
   { to: '/perfil', label: 'Perfil' },
 ]
 
+const GESTOR_NAV_ITEMS = [
+  { to: '/usuarios', label: 'Usuários' },
+  { to: '/auditoria', label: 'Auditoria' },
+]
+
 function initials(name) {
   if (!name) return '??'
   return name
@@ -21,6 +26,7 @@ function initials(name) {
 export default function Layout() {
   const { profile, user, signOut } = useAuth()
   const navigate = useNavigate()
+  const navItems = profile?.role === 'gestor' ? [...NAV_ITEMS, ...GESTOR_NAV_ITEMS] : NAV_ITEMS
 
   async function handleSignOut() {
     await signOut()
@@ -37,7 +43,7 @@ export default function Layout() {
           <div className="sidebar-brand-name">Granja Lucyara Dumont</div>
         </div>
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -63,7 +69,7 @@ export default function Layout() {
       </main>
 
       <nav className="bottom-nav">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

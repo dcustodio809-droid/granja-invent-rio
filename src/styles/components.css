@@ -114,7 +114,7 @@ table.data-table tr:last-child td { border-bottom: none; }
   box-sizing: border-box;
 }
 .dropzone.attached { border-color: var(--red); background: var(--bg-tint); color: var(--red); }
-.field-label { font-size: 11px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; display: block; }
+.field-label { font-size: 11.5px; font-weight: 800; color: var(--black); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; display: block; }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
 .stepper { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 16px 0; }
 .stepper-btn {
@@ -136,7 +136,7 @@ table.data-table tr:last-child td { border-bottom: none; }
 }
 .detail-name { font-size: 20px; font-weight: 800; margin: 10px 0 16px; }
 .detail-field { margin-bottom: 4px; }
-.detail-field-label { font-size: 10px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .3px; }
+.detail-field-label { font-size: 12.5px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .3px; }
 .detail-field-value { font-size: 16px; font-weight: 700; margin-top: 3px; }
 .detail-desc { font-size: 15px; color: var(--text-secondary); line-height: 1.6; margin: 16px 0; }
 .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--black); margin-bottom: 16px; cursor: pointer; background: none; border: none; padding: 0; }

@@ -8,11 +8,20 @@ import ItemDetail from './pages/ItemDetail'
 import Stock from './pages/Stock'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+import Users from './pages/Users'
+import Audit from './pages/Audit'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="empty-hint" style={{ padding: 40 }}>Carregando...</div>
   if (!user) return <Navigate to="/login" replace />
+  return children
+}
+
+function GestorRoute({ children }) {
+  const { profile, loading } = useAuth()
+  if (loading) return <div className="empty-hint" style={{ padding: 40 }}>Carregando...</div>
+  if (profile?.role !== 'gestor') return <Navigate to="/" replace />
   return children
 }
 
@@ -34,6 +43,8 @@ export default function App() {
         <Route path="estoque" element={<Stock />} />
         <Route path="perfil" element={<Profile />} />
         <Route path="configuracoes" element={<Settings />} />
+        <Route path="usuarios" element={<GestorRoute><Users /></GestorRoute>} />
+        <Route path="auditoria" element={<GestorRoute><Audit /></GestorRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
