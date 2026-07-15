@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { CATEGORIES, categoryLabel, createItem, listItems } from '../lib/data'
+import { CATEGORIES, categoryLabel, createItem, deleteItems, listItems } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import PrintReport from '../components/PrintReport'
@@ -61,6 +61,14 @@ export default function Items() {
     setSelected((prev) => (prev.size === ids.length ? new Set() : new Set(ids)))
   }
 
+  async function handleDeleteSelected() {
+    if (selected.size === 0) return
+    if (!window.confirm(`Excluir ${selected.size} item(ns) selecionado(s)? Essa ação não pode ser desfeita.`)) return
+    await deleteItems([...selected])
+    setSelected(new Set())
+    load()
+  }
+
   const filtered = useMemo(() => {
     let list = items.filter((i) => {
       if (activeCategory !== 'todos' && i.category !== activeCategory) return false
@@ -96,7 +104,14 @@ export default function Items() {
           <div className="page-title">Itens</div>
           <div className="page-subtitle">{filtered.length} item(ns){selected.size > 0 ? ` · ${selected.size} selecionado(s)` : ''}</div>
         </div>
-        <button className="btn btn-secondary" onClick={() => window.print()}>Gerar relatório PDF</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {selected.size > 0 && (
+            <button className="btn" style={{ background: 'var(--bg-tint)', color: 'var(--red)' }} onClick={handleDeleteSelected}>
+              Excluir selecionados ({selected.size})
+            </button>
+          )}
+          <button className="btn btn-secondary" onClick={() => window.print()}>Gerar relatório PDF</button>
+        </div>
       </div>
 
       <div className="toolbar">

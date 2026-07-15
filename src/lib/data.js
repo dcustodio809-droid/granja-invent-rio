@@ -41,6 +41,11 @@ export async function updateItem(id, patch) {
   return data
 }
 
+export async function deleteItems(ids) {
+  const { error } = await supabase.from('items').delete().in('id', ids)
+  if (error) throw error
+}
+
 // ---------- Materiais ----------
 export async function listMaterials() {
   const { data, error } = await supabase.from('materials').select('*').order('name', { ascending: true })
@@ -65,6 +70,11 @@ export async function updateMaterialQty(materialId, newQty) {
   return data
 }
 
+export async function deleteMaterials(ids) {
+  const { error } = await supabase.from('materials').delete().in('id', ids)
+  if (error) throw error
+}
+
 // ---------- Movimentações ----------
 export async function listMovements() {
   const { data, error } = await supabase
@@ -79,6 +89,11 @@ export async function createMovement(movement) {
   const { data, error } = await supabase.from('movements').insert(movement).select().single()
   if (error) throw error
   return data
+}
+
+export async function deleteMovements(ids) {
+  const { error } = await supabase.from('movements').delete().in('id', ids)
+  if (error) throw error
 }
 
 // Registra uma movimentação de estoque (entrada soma, saída subtrai) e atualiza o saldo do material

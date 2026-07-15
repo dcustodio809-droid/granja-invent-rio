@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createMaterial, listMaterials, listMovements, registerStockUpdate } from '../lib/data'
+import { createMaterial, deleteMaterials, deleteMovements, listMaterials, listMovements, registerStockUpdate } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import PrintReport from '../components/PrintReport'
@@ -36,6 +36,22 @@ export default function Stock() {
     setter((prev) => (prev.size === ids.length ? new Set() : new Set(ids)))
   }
 
+  async function handleDeleteMaterials() {
+    if (selectedMaterials.size === 0) return
+    if (!window.confirm(`Excluir ${selectedMaterials.size} material(is) selecionado(s)? As movimentações ligadas a eles também serão excluídas. Essa ação não pode ser desfeita.`)) return
+    await deleteMaterials([...selectedMaterials])
+    setSelectedMaterials(new Set())
+    load()
+  }
+
+  async function handleDeleteMovements() {
+    if (selectedMovements.size === 0) return
+    if (!window.confirm(`Excluir ${selectedMovements.size} movimentação(ões) selecionada(s)? Essa ação não altera o saldo do estoque, só remove o registro. Essa ação não pode ser desfeita.`)) return
+    await deleteMovements([...selectedMovements])
+    setSelectedMovements(new Set())
+    load()
+  }
+
   const materialColumns = [
     { key: 'name', label: 'Material' },
     { key: 'qty', label: 'Quantidade', render: (r) => `${r.qty} ${r.unit}` },
@@ -59,6 +75,16 @@ export default function Stock() {
           <div className="page-subtitle">Materiais e movimentações</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          {tab === 'materiais' && selectedMaterials.size > 0 && (
+            <button className="btn" style={{ background: 'var(--bg-tint)', color: 'var(--red)' }} onClick={handleDeleteMaterials}>
+              Excluir selecionados ({selectedMaterials.size})
+            </button>
+          )}
+          {tab === 'movimentacao' && selectedMovements.size > 0 && (
+            <button className="btn" style={{ background: 'var(--bg-tint)', color: 'var(--red)' }} onClick={handleDeleteMovements}>
+              Excluir selecionados ({selectedMovements.size})
+            </button>
+          )}
           <button className="btn btn-secondary" onClick={() => window.print()}>Gerar relatório PDF</button>
           {tab === 'materiais' && (
             <button className="btn btn-primary" onClick={() => setShowAddMaterial(true)}>+ Novo material</button>
