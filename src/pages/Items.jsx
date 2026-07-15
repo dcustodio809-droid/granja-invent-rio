@@ -1,8 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { CATEGORIES, categoryLabel, createItem, listItems, maintenanceStatus } from '../lib/data'
+import { CATEGORIES, categoryLabel, createItem, listItems } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+
+const COLUMNS = [
+  { key: 'name', label: 'Item' },
+  { key: 'category', label: 'Categoria' },
+  { key: 'brand', label: 'Marca' },
+  { key: 'identifier', label: 'Placa / Nº Série' },
+  { key: 'qty', label: 'Qtd' },
+  { key: 'location', label: 'Localização' },
+]
+
+function identifierOf(item) {
+  return item.category === 'veiculo' ? (item.plate || '') : (item.serial || '')
+}
 
 export default function Items() {
   const [items, setItems] = useState([])
@@ -10,6 +23,8 @@ export default function Items() {
   const [search, setSearch] = useState('')
   const [params, setParams] = useSearchParams()
   const [showAdd, setShowAdd] = useState(false)
+  const [sortKey, setSortKey] = useState('name')
+  const [sortDir, setSortDir] = useState('asc')
   const navigate = useNavigate()
   const { user } = useAuth()
 
@@ -22,13 +37,42 @@ export default function Items() {
 
   useEffect(load, [])
 
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
   const filtered = useMemo(() => {
-    return items.filter((i) => {
+    let list = items.filter((i) => {
       if (activeCategory !== 'todos' && i.category !== activeCategory) return false
-      if (search && !`${i.name} ${i.serial} ${i.brand}`.toLowerCase().includes(search.toLowerCase())) return false
+      if (search && !`${i.name} ${i.serial} ${i.plate} ${i.brand}`.toLowerCase().includes(search.toLowerCase())) return false
       return true
     })
-  }, [items, activeCategory, search])
+    list = [...list].sort((a, b) => {
+      let va, vb
+      if (sortKey === 'category') {
+        va = categoryLabel(a.category)
+        vb = categoryLabel(b.category)
+      } else if (sortKey === 'identifier') {
+        va = identifierOf(a)
+        vb = identifierOf(b)
+      } else if (sortKey === 'qty') {
+        va = Number(a.qty) || 0
+        vb = Number(b.qty) || 0
+      } else {
+        va = (a[sortKey] || '').toString().toLowerCase()
+        vb = (b[sortKey] || '').toString().toLowerCase()
+      }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1
+      if (va > vb) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+    return list
+  }, [items, activeCategory, search, sortKey, sortDir])
 
   return (
     <div>
@@ -42,7 +86,7 @@ export default function Items() {
       <div className="toolbar">
         <input
           className="search-input"
-          placeholder="Buscar equipamento, peça, número de série..."
+          placeholder="Buscar equipamento, peça, número de série ou placa..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -76,37 +120,31 @@ export default function Items() {
             <thead>
               <tr>
                 <th>Foto</th>
-                <th>Item</th>
-                <th>Categoria</th>
-                <th>Marca</th>
-                <th>Nº Série</th>
-                <th>Qtd</th>
-                <th>Localização</th>
-                <th>Manutenção</th>
+                {COLUMNS.map((col) => (
+                  <th key={col.key} className="sortable-th" onClick={() => handleSort(col.key)}>
+                    {col.label}{sortKey === col.key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => {
-                const status = maintenanceStatus(item.maintenance_due)
-                return (
-                  <tr key={item.id} onClick={() => navigate(`/itens/${item.id}`)} style={{ cursor: 'pointer' }}>
-                    <td>
-                      {item.photo_url ? (
-                        <img className="table-photo" src={item.photo_url} alt="" />
-                      ) : (
-                        <div className="table-photo" />
-                      )}
-                    </td>
-                    <td style={{ fontWeight: 700 }}>{item.name}</td>
-                    <td>{categoryLabel(item.category)}</td>
-                    <td>{item.brand}</td>
-                    <td className="mono">{item.serial}</td>
-                    <td>{item.qty}</td>
-                    <td>{item.location}</td>
-                    <td>{status && status.key !== 'ok' && <span className={'status-pill ' + status.key}>{status.label}</span>}</td>
-                  </tr>
-                )
-              })}
+              {filtered.map((item) => (
+                <tr key={item.id} onClick={() => navigate(`/itens/${item.id}`)} style={{ cursor: 'pointer' }}>
+                  <td>
+                    {item.photo_url ? (
+                      <img className="table-photo" src={item.photo_url} alt="" />
+                    ) : (
+                      <div className="table-photo" />
+                    )}
+                  </td>
+                  <td style={{ fontWeight: 700 }}>{item.name}</td>
+                  <td>{categoryLabel(item.category)}</td>
+                  <td>{item.brand}</td>
+                  <td className="mono">{identifierOf(item) || '—'}</td>
+                  <td>{item.qty}</td>
+                  <td>{item.location}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -133,12 +171,16 @@ function AddItemModal({ onClose, onCreated, userId }) {
   const [category, setCategory] = useState('equipamento')
   const [brand, setBrand] = useState('')
   const [serial, setSerial] = useState('')
+  const [plate, setPlate] = useState('')
+  const [renavam, setRenavam] = useState('')
+  const [chassi, setChassi] = useState('')
   const [qty, setQty] = useState(1)
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
   const [photo, setPhoto] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const isVehicle = category === 'veiculo'
 
   async function handleSave(e) {
     e.preventDefault()
@@ -151,7 +193,10 @@ function AddItemModal({ onClose, onCreated, userId }) {
         name,
         category,
         brand,
-        serial,
+        serial: isVehicle ? '' : serial,
+        plate: isVehicle ? plate : null,
+        renavam: isVehicle ? renavam : null,
+        chassi: isVehicle ? chassi : null,
         qty: Number(qty) || 1,
         location,
         description,
@@ -187,10 +232,29 @@ function AddItemModal({ onClose, onCreated, userId }) {
             <label className="field-label">Marca</label>
             <input className="input" value={brand} onChange={(e) => setBrand(e.target.value)} />
           </div>
-          <div>
-            <label className="field-label">Nº de série</label>
-            <input className="input mono" value={serial} onChange={(e) => setSerial(e.target.value)} />
-          </div>
+
+          {isVehicle ? (
+            <>
+              <div>
+                <label className="field-label">Placa</label>
+                <input className="input mono" value={plate} onChange={(e) => setPlate(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">Renavam</label>
+                <input className="input mono" value={renavam} onChange={(e) => setRenavam(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">Chassi</label>
+                <input className="input mono" value={chassi} onChange={(e) => setChassi(e.target.value)} />
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="field-label">Nº de série</label>
+              <input className="input mono" value={serial} onChange={(e) => setSerial(e.target.value)} />
+            </div>
+          )}
+
           <div>
             <label className="field-label">Quantidade</label>
             <input className="input" type="number" min="0" value={qty} onChange={(e) => setQty(e.target.value)} />

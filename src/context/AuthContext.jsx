@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(undefined) // undefined = loading, null = logged out
+  const [session, setSession] = useState(undefined)
   const [profile, setProfile] = useState(null)
 
   useEffect(() => {

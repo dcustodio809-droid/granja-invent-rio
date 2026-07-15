@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CATEGORIES, listItems, listMaterials, listMovements, maintenanceStatus } from '../lib/data'
+import { CATEGORIES, listItems, listMaterials, listMovements } from '../lib/data'
 
 export default function Dashboard() {
   const [items, setItems] = useState([])
@@ -22,14 +22,6 @@ export default function Dashboard() {
 
   const categoryCounts = useMemo(
     () => CATEGORIES.map((c) => ({ ...c, count: items.filter((i) => i.category === c.value).length })),
-    [items]
-  )
-
-  const maintenanceAlerts = useMemo(
-    () =>
-      items
-        .map((i) => ({ item: i, status: maintenanceStatus(i.maintenance_due) }))
-        .filter((x) => x.status && x.status.key !== 'ok'),
     [items]
   )
 
@@ -63,23 +55,6 @@ export default function Dashboard() {
           </Link>
         ))}
       </div>
-
-      {maintenanceAlerts.length > 0 && (
-        <>
-          <div className="section-title">MANUTENÇÕES</div>
-          <div className="alert-list">
-            {maintenanceAlerts.map(({ item, status }) => (
-              <Link key={item.id} to={`/itens/${item.id}`} className="alert-row">
-                <span className="alert-dot" />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="alert-row-title">{item.name}</div>
-                  <div className="alert-row-sub">{status.label} · {item.maintenance_due}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
 
       <div className="section-title">ESTOQUE DE MATERIAIS</div>
       <div className="alert-list">

@@ -2,10 +2,9 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Início', match: 'painel' },
+  { to: '/', label: 'Início' },
   { to: '/itens', label: 'Itens' },
   { to: '/estoque', label: 'Estoque' },
-  { to: '/manutencoes', label: 'Manutenções' },
   { to: '/perfil', label: 'Perfil' },
 ]
 
@@ -30,7 +29,6 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      {/* SIDEBAR - desktop */}
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="sidebar-logo">
@@ -60,12 +58,10 @@ export default function Layout() {
         <button className="btn btn-secondary sidebar-logout" onClick={handleSignOut}>Sair</button>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className="main-content">
         <Outlet />
       </main>
 
-      {/* BOTTOM NAV - mobile */}
       <nav className="bottom-nav">
         {NAV_ITEMS.map((item) => (
           <NavLink

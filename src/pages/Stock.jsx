@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createMaterial, listMaterials, listMovements, registerStockUpdate } from '../lib/data'
-import { uploadFile } from '../lib/supabaseClient'
+import { supabase, uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 
 export default function Stock() {
@@ -68,7 +68,7 @@ export default function Stock() {
         <div className="table-wrap">
           <table className="data-table">
             <thead>
-              <tr><th>Data</th><th>Material</th><th>Tipo</th><th>Quantidade</th><th>Responsável</th></tr>
+              <tr><th>Data</th><th>Material</th><th>Tipo</th><th>Quantidade</th><th>Nota fiscal</th><th>Descrição</th><th>Responsável</th></tr>
             </thead>
             <tbody>
               {movements.map((mv) => (
@@ -81,10 +81,12 @@ export default function Stock() {
                   <td style={{ color: mv.type === 'entrada' ? '#141414' : 'var(--red)', fontWeight: 700 }}>
                     {mv.type === 'entrada' ? '+' : '-'}{mv.qty} {mv.material?.unit}
                   </td>
+                  <td>{mv.invoice_number ? `${mv.invoice_number}${mv.purchase_date ? ' · ' + new Date(mv.purchase_date + 'T00:00:00').toLocaleDateString('pt-BR') : ''}` : '—'}</td>
+                  <td>{mv.description || '—'}</td>
                   <td>{mv.responsible || '—'}</td>
                 </tr>
               ))}
-              {movements.length === 0 && <tr><td colSpan={5} className="empty-hint">Nenhuma movimentação registrada.</td></tr>}
+              {movements.length === 0 && <tr><td colSpan={7} className="empty-hint">Nenhuma movimentação registrada.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -112,7 +114,9 @@ export default function Stock() {
 
 function StockUpdateModal({ material, userId, onClose, onDone }) {
   const [qty, setQty] = useState(Number(material.qty))
-  const [invoice, setInvoice] = useState(null)
+  const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [purchaseDate, setPurchaseDate] = useState('')
+  const [description, setDescription] = useState('')
   const [photo, setPhoto] = useState(null)
   const [responsible, setResponsible] = useState('')
   const [saving, setSaving] = useState(false)
@@ -123,11 +127,19 @@ function StockUpdateModal({ material, userId, onClose, onDone }) {
     setSaving(true)
     setError('')
     try {
-      let invoiceUrl = null
-      let photoUrl = null
-      if (invoice) invoiceUrl = await uploadFile(invoice, 'invoices')
-      if (photo) photoUrl = await uploadFile(photo, 'materials')
-      await registerStockUpdate({ material, newQty: Number(qty), invoiceUrl, photoUrl, responsible, userId })
+      if (photo) {
+        const photoUrl = await uploadFile(photo, 'materials')
+        await supabase.from('materials').update({ photo_url: photoUrl }).eq('id', material.id)
+      }
+      await registerStockUpdate({
+        material,
+        newQty: Number(qty),
+        invoiceNumber,
+        purchaseDate: purchaseDate || null,
+        description,
+        responsible,
+        userId,
+      })
       onDone()
     } catch (err) {
       setError(err.message)
@@ -142,10 +154,26 @@ function StockUpdateModal({ material, userId, onClose, onDone }) {
         <div className="modal-title">Atualizar estoque</div>
         <div className="modal-sub">{material.name}</div>
 
-        <label className={'dropzone' + (invoice ? ' attached' : '')}>
-          {invoice ? `Nota fiscal: ${invoice.name}` : 'ANEXAR NOTA FISCAL (PDF/FOTO)'}
-          <input type="file" accept="application/pdf,image/*" style={{ display: 'none' }} onChange={(e) => setInvoice(e.target.files?.[0] || null)} />
-        </label>
+        <div className="field-grid">
+          <div>
+            <label className="field-label">Número da nota fiscal</label>
+            <input className="input" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Ex: 12345" />
+          </div>
+          <div>
+            <label className="field-label">Data da compra</label>
+            <input className="input" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
+          </div>
+        </div>
+
+        <label className="field-label">Descrição</label>
+        <textarea
+          className="input"
+          style={{ height: 60, paddingTop: 10, marginBottom: 12 }}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Informações sobre esta entrada ou saída"
+        />
+
         <label className={'dropzone' + (photo ? ' attached' : '')}>
           {photo ? `Foto do material: ${photo.name}` : 'ANEXAR FOTO DO MATERIAL'}
           <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => setPhoto(e.target.files?.[0] || null)} />

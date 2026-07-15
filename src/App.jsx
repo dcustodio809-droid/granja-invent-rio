@@ -6,7 +6,6 @@ import Dashboard from './pages/Dashboard'
 import Items from './pages/Items'
 import ItemDetail from './pages/ItemDetail'
 import Stock from './pages/Stock'
-import Maintenance from './pages/Maintenance'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 
@@ -33,7 +32,6 @@ export default function App() {
         <Route path="itens" element={<Items />} />
         <Route path="itens/:id" element={<ItemDetail />} />
         <Route path="estoque" element={<Stock />} />
-        <Route path="manutencoes" element={<Maintenance />} />
         <Route path="perfil" element={<Profile />} />
         <Route path="configuracoes" element={<Settings />} />
       </Route>

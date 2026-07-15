@@ -41,16 +41,6 @@ export async function updateItem(id, patch) {
   return data
 }
 
-export async function markMaintenanceDone(item) {
-  const days = item.maintenance_interval_days || 90
-  const nextDue = new Date()
-  nextDue.setDate(nextDue.getDate() + days)
-  return updateItem(item.id, {
-    last_maintenance: new Date().toISOString().slice(0, 10),
-    maintenance_due: nextDue.toISOString().slice(0, 10),
-  })
-}
-
 // ---------- Materiais ----------
 export async function listMaterials() {
   const { data, error } = await supabase.from('materials').select('*').order('name', { ascending: true })
@@ -92,7 +82,7 @@ export async function createMovement(movement) {
 }
 
 // Registra uma atualização de estoque: cria a movimentação e atualiza o saldo do material
-export async function registerStockUpdate({ material, newQty, invoiceUrl, photoUrl, responsible, userId }) {
+export async function registerStockUpdate({ material, newQty, invoiceNumber, purchaseDate, description, responsible, userId }) {
   const delta = newQty - material.qty
   if (delta === 0) return null
   const type = delta > 0 ? 'entrada' : 'saida'
@@ -100,23 +90,12 @@ export async function registerStockUpdate({ material, newQty, invoiceUrl, photoU
     material_id: material.id,
     type,
     qty: Math.abs(delta),
-    invoice_url: invoiceUrl || null,
-    photo_url: photoUrl || null,
+    invoice_number: invoiceNumber || null,
+    purchase_date: purchaseDate || null,
+    description: description || null,
     responsible: responsible || '',
     created_by: userId || null,
   })
   await updateMaterialQty(material.id, newQty)
   return movement
-}
-
-// ---------- Status de manutenção ----------
-export function maintenanceStatus(dueDateStr) {
-  if (!dueDateStr) return null
-  const due = new Date(dueDateStr + 'T00:00:00')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const diffDays = Math.round((due - today) / 86400000)
-  if (diffDays < 0) return { key: 'overdue', label: 'Atrasada' }
-  if (diffDays <= 21) return { key: 'soon', label: 'Em breve' }
-  return { key: 'ok', label: 'Em dia' }
 }
