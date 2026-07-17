@@ -42,9 +42,27 @@ export function WrenchIcon(props) {
   )
 }
 
+export function DrillIcon(props) {
+  return (
+    <svg viewBox="0 0 64 64" {...props}>
+      <path d="M6 20h34a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4h-3v6a3 3 0 0 1-3 3H16a3 3 0 0 1-3-3v-6H9a3 3 0 0 1-3-3V23a3 3 0 0 1 3-3Z" fill="#f5a623" stroke="#111" strokeWidth="3" strokeLinejoin="round" />
+      <path d="M6 20h6a3 3 0 0 1 0 6H6" fill="#e8960f" stroke="#111" strokeWidth="3" strokeLinejoin="round" />
+      <rect x="14" y="26" width="12" height="8" rx="1.5" fill="#4a4a4a" stroke="#111" strokeWidth="2.5" />
+      <circle cx="31" cy="24.5" r="1.6" fill="#111" />
+      <circle cx="31" cy="29" r="1.6" fill="#111" />
+      <circle cx="31" cy="33.5" r="1.6" fill="#111" />
+      <path d="M13 34v9a3 3 0 0 0 3 3h4a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-1v-8Z" fill="#f5a623" stroke="#111" strokeWidth="3" strokeLinejoin="round" />
+      <rect x="16" y="38" width="6" height="6" rx="1.5" fill="#d93b3b" stroke="#111" strokeWidth="2.5" />
+      <rect x="40" y="21" width="6" height="10" rx="1" fill="#4a4a4a" stroke="#111" strokeWidth="3" strokeLinejoin="round" />
+      <path d="M46 23l6 1.5v6L46 32Z" fill="#7a7a85" stroke="#111" strokeWidth="3" strokeLinejoin="round" />
+      <path d="M52 26.5c2-1.5 3-1.5 4-3 1-1 2 0 3-1s2.5-1 3.5 0" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export const CATEGORY_ICON_COMPONENTS = {
   veiculo: CarIcon,
   maquina: TractorIcon,
-  equipamento: BrushCutterIcon,
+  equipamento: DrillIcon,
   ferramenta: WrenchIcon,
 }
