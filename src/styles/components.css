@@ -22,7 +22,7 @@
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
   padding: 22px 18px; display: block; color: var(--black);
 }
-.category-card-icon { font-size: 30px; line-height: 1; margin-bottom: 10px; }
+.category-card-icon { color: var(--red); margin-bottom: 10px; display: inline-flex; }
 .category-card-count { font-size: 26px; font-weight: 800; }
 .category-card-label { font-size: 13px; color: var(--text-secondary); font-weight: 700; margin-top: 3px; }
 

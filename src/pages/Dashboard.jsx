@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORIES, listItems } from '../lib/data'
+import { CATEGORY_ICON_COMPONENTS } from '../components/CategoryIcons'
 
 export default function Dashboard() {
   const [items, setItems] = useState([])
@@ -34,13 +35,16 @@ export default function Dashboard() {
 
       <div className="section-title">POR CATEGORIA</div>
       <div className="category-grid">
-        {categoryCounts.map((c) => (
-          <Link key={c.value} to={`/inventario?categoria=${c.value}`} className="category-card">
-            <div className="category-card-icon">{c.icon}</div>
-            <div className="category-card-count">{c.count}</div>
-            <div className="category-card-label">{c.label}</div>
-          </Link>
-        ))}
+        {categoryCounts.map((c) => {
+          const Icon = CATEGORY_ICON_COMPONENTS[c.value]
+          return (
+            <Link key={c.value} to={`/inventario?categoria=${c.value}`} className="category-card">
+              <div className="category-card-icon">{Icon && <Icon width={28} height={28} />}</div>
+              <div className="category-card-count">{c.count}</div>
+              <div className="category-card-label">{c.label}</div>
+            </Link>
+          )
+        })}
       </div>
     </div>
   )
