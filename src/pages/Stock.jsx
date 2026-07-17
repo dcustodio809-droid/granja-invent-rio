@@ -366,6 +366,7 @@ function AddMaterialModal({ userId, onClose, onCreated }) {
               <option value="un">un</option>
               <option value="L">L</option>
               <option value="sc">saco</option>
+              <option value="cx">caixas</option>
             </select>
           </div>
           <div><label className="field-label">Qtd. inicial</label><input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} /></div>

@@ -101,7 +101,7 @@ export default function Items() {
     <div>
       <div className="page-header">
         <div>
-          <div className="page-title">Itens</div>
+          <div className="page-title">Inventário</div>
           <div className="page-subtitle">{filtered.length} item(ns){selected.size > 0 ? ` · ${selected.size} selecionado(s)` : ''}</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -167,7 +167,7 @@ export default function Items() {
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} onClick={() => navigate(`/itens/${item.id}`)} style={{ cursor: 'pointer' }}>
+                <tr key={item.id} onClick={() => navigate(`/inventario/${item.id}`)} style={{ cursor: 'pointer' }}>
                   <td className="select-col" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
                   </td>
@@ -192,7 +192,7 @@ export default function Items() {
       )}
 
       <PrintReport
-        title="Relatório de Itens"
+        title="Relatório de Inventário"
         columns={[
           { key: 'name', label: 'Item' },
           { key: 'category', label: 'Categoria', render: (r) => categoryLabel(r.category) },

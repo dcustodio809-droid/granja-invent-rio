@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 const TABLE_LABELS = {
-  items: 'Itens',
+  items: 'Inventário',
   materials: 'Materiais',
   movements: 'Movimentação',
 }

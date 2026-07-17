@@ -38,8 +38,8 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="itens" element={<Items />} />
-        <Route path="itens/:id" element={<ItemDetail />} />
+        <Route path="inventario" element={<Items />} />
+        <Route path="inventario/:id" element={<ItemDetail />} />
         <Route path="estoque" element={<Stock />} />
         <Route path="perfil" element={<Profile />} />
         <Route path="configuracoes" element={<Settings />} />

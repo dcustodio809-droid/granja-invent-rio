@@ -1,10 +1,10 @@
 import { supabase } from './supabaseClient'
 
 export const CATEGORIES = [
-  { value: 'veiculo', label: 'Veículos' },
-  { value: 'maquina', label: 'Máquinas' },
-  { value: 'equipamento', label: 'Equipamentos' },
-  { value: 'ferramenta', label: 'Ferramentas' },
+  { value: 'veiculo', label: 'Veículos', icon: '🚜' },
+  { value: 'maquina', label: 'Máquinas', icon: '⚙️' },
+  { value: 'equipamento', label: 'Equipamentos', icon: '📦' },
+  { value: 'ferramenta', label: 'Ferramentas', icon: '🔧' },
 ]
 
 export function categoryLabel(value) {
