@@ -60,9 +60,14 @@ export function DrillIcon(props) {
   )
 }
 
+// Só Equipamentos usa um desenho (não existe emoji de furadeira no padrão Unicode).
+// As outras categorias usam emoji de verdade.
 export const CATEGORY_ICON_COMPONENTS = {
-  veiculo: CarIcon,
-  maquina: TractorIcon,
   equipamento: DrillIcon,
-  ferramenta: WrenchIcon,
+}
+
+export const CATEGORY_EMOJI = {
+  veiculo: '🚗',
+  maquina: '🚜',
+  ferramenta: '🔧',
 }

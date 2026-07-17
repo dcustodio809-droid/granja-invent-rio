@@ -23,8 +23,9 @@
   padding: 22px 18px; display: block; color: var(--black);
 }
 .category-card-icon { color: var(--red); margin-bottom: 10px; display: inline-flex; }
+.category-card-emoji { font-size: 44px; line-height: 1; }
 .category-card-count { font-size: 26px; font-weight: 800; }
-.category-card-label { font-size: 13px; color: var(--text-secondary); font-weight: 700; margin-top: 3px; }
+.category-card-label { font-size: 15px; color: var(--black); font-weight: 800; margin-top: 4px; text-transform: uppercase; letter-spacing: .3px; }
 
 .alert-list { display: flex; flex-direction: column; gap: 8px; }
 .alert-row {

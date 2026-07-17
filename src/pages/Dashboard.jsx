@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORIES, listItems } from '../lib/data'
-import { CATEGORY_ICON_COMPONENTS } from '../components/CategoryIcons'
+import { CATEGORY_EMOJI, CATEGORY_ICON_COMPONENTS } from '../components/CategoryIcons'
 
 export default function Dashboard() {
   const [items, setItems] = useState([])
@@ -37,9 +37,12 @@ export default function Dashboard() {
       <div className="category-grid">
         {categoryCounts.map((c) => {
           const Icon = CATEGORY_ICON_COMPONENTS[c.value]
+          const emoji = CATEGORY_EMOJI[c.value]
           return (
             <Link key={c.value} to={`/inventario?categoria=${c.value}`} className="category-card">
-              <div className="category-card-icon">{Icon && <Icon width={28} height={28} />}</div>
+              <div className="category-card-icon">
+                {Icon ? <Icon width={44} height={44} /> : <span className="category-card-emoji">{emoji}</span>}
+              </div>
               <div className="category-card-count">{c.count}</div>
               <div className="category-card-label">{c.label}</div>
             </Link>
