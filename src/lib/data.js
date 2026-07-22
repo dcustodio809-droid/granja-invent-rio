@@ -46,6 +46,16 @@ export async function deleteItems(ids) {
   if (error) throw error
 }
 
+export async function addItemPhoto(item, url) {
+  const photos = [...(item.photos || []), url]
+  return updateItem(item.id, { photos, photo_url: photos[0] })
+}
+
+export async function removeItemPhoto(item, url) {
+  const photos = (item.photos || []).filter((p) => p !== url)
+  return updateItem(item.id, { photos, photo_url: photos[0] || null })
+}
+
 // ---------- Materiais ----------
 export async function listMaterials() {
   const { data, error } = await supabase.from('materials').select('*').order('name', { ascending: true })

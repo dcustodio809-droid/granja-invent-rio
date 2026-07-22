@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CATEGORIES, categoryLabel, getItem, updateItem } from '../lib/data'
+import { CATEGORIES, categoryLabel, getItem, updateItem, addItemPhoto, removeItemPhoto } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
 import ImageCropper from '../components/ImageCropper'
 
@@ -10,8 +10,7 @@ export default function ItemDetail() {
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [cropSrc, setCropSrc] = useState(null)
+  const [activeIndex, setActiveIndex] = useState(0)
 
   function load() {
     setLoading(true)
@@ -19,49 +18,37 @@ export default function ItemDetail() {
   }
   useEffect(load, [id])
 
-  function handlePhotoSelect(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setCropSrc({ url: URL.createObjectURL(file), name: file.name })
-  }
-
-  async function handleCroppedPhoto(file) {
-    setCropSrc(null)
-    setSaving(true)
-    try {
-      const photo_url = await uploadFile(file, 'items')
-      const updated = await updateItem(id, { photo_url })
-      setItem(updated)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   if (loading || !item) return <div className="empty-hint">Carregando...</div>
 
   const isVehicle = item.category === 'veiculo'
+  const photos = item.photos && item.photos.length > 0 ? item.photos : (item.photo_url ? [item.photo_url] : [])
+  const activePhoto = photos[Math.min(activeIndex, photos.length - 1)]
 
   return (
     <div style={{ maxWidth: 640 }}>
       <button className="back-link" onClick={() => navigate(-1)}>&larr; Voltar</button>
 
-      <label className="detail-photo">
-        {item.photo_url ? (
-          <img src={item.photo_url} alt="" className="detail-photo-img" />
+      <div className="detail-photo">
+        {activePhoto ? (
+          <img src={activePhoto} alt="" className="detail-photo-img" />
         ) : (
-          'ANEXAR FOTO'
+          'SEM FOTO'
         )}
-        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoSelect} />
-      </label>
+      </div>
 
-      {cropSrc && (
-        <ImageCropper
-          imageSrc={cropSrc.url}
-          fileName={cropSrc.name}
-          onCancel={() => setCropSrc(null)}
-          onConfirm={handleCroppedPhoto}
-        />
+      {photos.length > 1 && (
+        <div className="photo-thumb-strip">
+          {photos.map((url, i) => (
+            <button
+              type="button"
+              key={url}
+              className={'photo-thumb-small' + (i === activeIndex ? ' active' : '')}
+              onClick={() => setActiveIndex(i)}
+            >
+              <img src={url} alt="" />
+            </button>
+          ))}
+        </div>
       )}
 
       <span className="pill pill-tint">{categoryLabel(item.category)}</span>
@@ -108,21 +95,22 @@ export default function ItemDetail() {
       {item.description && <div className="detail-desc">{item.description}</div>}
 
       <div className="modal-actions" style={{ marginTop: 20 }}>
-        <button className="btn btn-secondary" onClick={() => setEditing(true)}>Editar</button>
-        <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-          Anexar imagem
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoSelect} />
-        </label>
+        <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setEditing(true)}>Editar</button>
       </div>
 
       {editing && (
-        <EditModal item={item} onClose={() => setEditing(false)} onSaved={(u) => { setItem(u); setEditing(false) }} />
+        <EditModal
+          item={item}
+          onClose={() => setEditing(false)}
+          onSaved={(u) => { setItem(u); setEditing(false) }}
+          onPhotosChanged={(u) => setItem(u)}
+        />
       )}
     </div>
   )
 }
 
-function EditModal({ item, onClose, onSaved }) {
+function EditModal({ item, onClose, onSaved, onPhotosChanged }) {
   const [name, setName] = useState(item.name)
   const [category, setCategory] = useState(item.category)
   const [brand, setBrand] = useState(item.brand || '')
@@ -134,7 +122,44 @@ function EditModal({ item, onClose, onSaved }) {
   const [location, setLocation] = useState(item.location || '')
   const [description, setDescription] = useState(item.description || '')
   const [saving, setSaving] = useState(false)
+  const [currentItem, setCurrentItem] = useState(item)
+  const [cropSrc, setCropSrc] = useState(null)
+  const [photoSaving, setPhotoSaving] = useState(false)
   const isVehicle = category === 'veiculo'
+  const photos = currentItem.photos && currentItem.photos.length > 0
+    ? currentItem.photos
+    : (currentItem.photo_url ? [currentItem.photo_url] : [])
+
+  function handlePhotoSelect(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setCropSrc({ url: URL.createObjectURL(file), name: file.name })
+  }
+
+  async function handleCroppedPhoto(file) {
+    setCropSrc(null)
+    setPhotoSaving(true)
+    try {
+      const photo_url = await uploadFile(file, 'items')
+      const updated = await addItemPhoto(currentItem, photo_url)
+      setCurrentItem(updated)
+      onPhotosChanged(updated)
+    } finally {
+      setPhotoSaving(false)
+    }
+  }
+
+  async function handleRemovePhoto(url) {
+    setPhotoSaving(true)
+    try {
+      const updated = await removeItemPhoto(currentItem, url)
+      setCurrentItem(updated)
+      onPhotosChanged(updated)
+    } finally {
+      setPhotoSaving(false)
+    }
+  }
 
   async function handleSave(e) {
     e.preventDefault()
@@ -158,6 +183,37 @@ function EditModal({ item, onClose, onSaved }) {
     <div className="modal-overlay" onClick={onClose}>
       <form className="modal-sheet" onClick={(e) => e.stopPropagation()} onSubmit={handleSave}>
         <div className="modal-title">Editar item</div>
+
+        <label className="field-label">Fotos</label>
+        <div className="photo-grid">
+          {photos.map((url) => (
+            <div key={url} className="photo-thumb">
+              <img src={url} alt="" />
+              <button
+                type="button"
+                className="photo-thumb-remove"
+                onClick={() => handleRemovePhoto(url)}
+                disabled={photoSaving}
+                title="Remover foto"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <label className="photo-thumb photo-thumb-add">
+            {photoSaving ? '...' : '+'}
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoSelect} disabled={photoSaving} />
+          </label>
+        </div>
+
+        {cropSrc && (
+          <ImageCropper
+            imageSrc={cropSrc.url}
+            fileName={cropSrc.name}
+            onCancel={() => setCropSrc(null)}
+            onConfirm={handleCroppedPhoto}
+          />
+        )}
 
         <label className="field-label">Nome</label>
         <input className="input" style={{ marginBottom: 12 }} value={name} onChange={(e) => setName(e.target.value)} required />
@@ -190,7 +246,7 @@ function EditModal({ item, onClose, onSaved }) {
         <textarea className="input" style={{ height: 70, paddingTop: 10, marginBottom: 12 }} value={description} onChange={(e) => setDescription(e.target.value)} />
 
         <div className="modal-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Fechar</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
         </div>
       </form>

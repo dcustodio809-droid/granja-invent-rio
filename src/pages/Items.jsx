@@ -306,6 +306,7 @@ function AddItemModal({ onClose, onCreated, userId }) {
         location,
         description,
         photo_url,
+        photos: photo_url ? [photo_url] : [],
         created_by: userId,
       })
       onCreated()
