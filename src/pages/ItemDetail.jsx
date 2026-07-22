@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CATEGORIES, categoryLabel, getItem, updateItem } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
+import ImageCropper from '../components/ImageCropper'
 
 export default function ItemDetail() {
   const { id } = useParams()
@@ -10,6 +11,7 @@ export default function ItemDetail() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [cropSrc, setCropSrc] = useState(null)
 
   function load() {
     setLoading(true)
@@ -17,9 +19,15 @@ export default function ItemDetail() {
   }
   useEffect(load, [id])
 
-  async function handlePhoto(e) {
+  function handlePhotoSelect(e) {
     const file = e.target.files?.[0]
+    e.target.value = ''
     if (!file) return
+    setCropSrc({ url: URL.createObjectURL(file), name: file.name })
+  }
+
+  async function handleCroppedPhoto(file) {
+    setCropSrc(null)
     setSaving(true)
     try {
       const photo_url = await uploadFile(file, 'items')
@@ -44,8 +52,17 @@ export default function ItemDetail() {
         ) : (
           'ANEXAR FOTO'
         )}
-        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhoto} />
+        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoSelect} />
       </label>
+
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc.url}
+          fileName={cropSrc.name}
+          onCancel={() => setCropSrc(null)}
+          onConfirm={handleCroppedPhoto}
+        />
+      )}
 
       <span className="pill pill-tint">{categoryLabel(item.category)}</span>
       <div className="detail-name">{item.name}</div>
@@ -94,7 +111,7 @@ export default function ItemDetail() {
         <button className="btn btn-secondary" onClick={() => setEditing(true)}>Editar</button>
         <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
           Anexar imagem
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhoto} />
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoSelect} />
         </label>
       </div>
 

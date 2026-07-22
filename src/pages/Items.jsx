@@ -4,6 +4,7 @@ import { CATEGORIES, categoryLabel, createItem, deleteItems, listItems } from '.
 import { uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import PrintReport from '../components/PrintReport'
+import ImageCropper from '../components/ImageCropper'
 
 const COLUMNS = [
   { key: 'name', label: 'Item' },
@@ -274,9 +275,17 @@ function AddItemModal({ onClose, onCreated, userId }) {
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
   const [photo, setPhoto] = useState(null)
+  const [cropSrc, setCropSrc] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const isVehicle = category === 'veiculo'
+
+  function handlePhotoSelect(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setCropSrc({ url: URL.createObjectURL(file), name: file.name })
+  }
 
   async function handleSave(e) {
     e.preventDefault()
@@ -366,8 +375,20 @@ function AddItemModal({ onClose, onCreated, userId }) {
 
         <label className={'dropzone' + (photo ? ' attached' : '')}>
           {photo ? `Foto selecionada: ${photo.name}` : 'ANEXAR FOTO'}
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoSelect} />
         </label>
+
+        {cropSrc && (
+          <ImageCropper
+            imageSrc={cropSrc.url}
+            fileName={cropSrc.name}
+            onCancel={() => setCropSrc(null)}
+            onConfirm={(file) => {
+              setPhoto(file)
+              setCropSrc(null)
+            }}
+          />
+        )}
 
         {error && <div className="login-error">{error}</div>}
 
