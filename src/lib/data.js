@@ -69,10 +69,10 @@ export async function createMaterial(material) {
   return data
 }
 
-export async function updateMaterialQty(materialId, newQty) {
+export async function updateMaterialQty(materialId, newQty, extra = {}) {
   const { data, error } = await supabase
     .from('materials')
-    .update({ qty: newQty, updated_at: new Date().toISOString() })
+    .update({ qty: newQty, ...extra, updated_at: new Date().toISOString() })
     .eq('id', materialId)
     .select()
     .single()
@@ -107,20 +107,25 @@ export async function deleteMovements(ids) {
 }
 
 // Registra uma movimentação de estoque (entrada soma, saída subtrai) e atualiza o saldo do material
-export async function registerStockUpdate({ material, type, amount, invoiceNumber, purchaseDate, description, responsible, userId }) {
+export async function registerStockUpdate({ material, type, amount, unitPrice, invoiceNumber, purchaseDate, description, responsible, userId }) {
   const qty = Number(amount)
   if (!qty || qty <= 0) return null
   const newQty = type === 'entrada' ? Number(material.qty) + qty : Math.max(0, Number(material.qty) - qty)
+  const price = unitPrice !== undefined && unitPrice !== null && unitPrice !== '' ? Number(unitPrice) : null
   const movement = await createMovement({
     material_id: material.id,
     type,
     qty,
+    unit_price: price,
+    total_value: price !== null ? Number((price * qty).toFixed(2)) : null,
     invoice_number: type === 'entrada' ? (invoiceNumber || null) : null,
     purchase_date: purchaseDate || null,
     description: description || null,
     responsible: responsible || '',
     created_by: userId || null,
   })
-  await updateMaterialQty(material.id, newQty)
+  // o preço mais recente informado numa entrada vira o "valor unitário" de referência do material
+  const materialExtra = type === 'entrada' && price !== null ? { unit_price: price } : {}
+  await updateMaterialQty(material.id, newQty, materialExtra)
   return movement
 }
