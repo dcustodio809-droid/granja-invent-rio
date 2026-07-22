@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { CATEGORIES, categoryLabel, createItem, deleteItems, listItems } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
@@ -31,6 +31,8 @@ export default function Items() {
   const { user } = useAuth()
 
   const activeCategory = params.get('categoria') || 'todos'
+  const activeLocation = params.get('local') || 'todas'
+  const [showFilters, setShowFilters] = useState(false)
 
   function load() {
     setLoading(true)
@@ -69,9 +71,15 @@ export default function Items() {
     load()
   }
 
+  const locations = useMemo(
+    () => [...new Set(items.map((i) => i.location).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [items]
+  )
+
   const filtered = useMemo(() => {
     let list = items.filter((i) => {
       if (activeCategory !== 'todos' && i.category !== activeCategory) return false
+      if (activeLocation !== 'todas' && i.location !== activeLocation) return false
       if (search && !`${i.name} ${i.serial} ${i.plate} ${i.brand}`.toLowerCase().includes(search.toLowerCase())) return false
       return true
     })
@@ -95,7 +103,7 @@ export default function Items() {
       return 0
     })
     return list
-  }, [items, activeCategory, search, sortKey, sortDir])
+  }, [items, activeCategory, activeLocation, search, sortKey, sortDir])
 
   return (
     <div>
@@ -114,31 +122,65 @@ export default function Items() {
         </div>
       </div>
 
-      <div className="toolbar">
+      <div className="toolbar" style={{ position: 'relative' }}>
         <input
           className="search-input"
           placeholder="Buscar equipamento, peça, número de série ou placa..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
-
-      <div className="chip-row">
         <button
-          className={'chip' + (activeCategory === 'todos' ? ' active' : '')}
-          onClick={() => setParams({})}
+          type="button"
+          className={'btn btn-secondary' + (activeCategory !== 'todos' || activeLocation !== 'todas' ? ' filter-btn-active' : '')}
+          onClick={() => setShowFilters((v) => !v)}
         >
-          Todos
+          Filtros{(activeCategory !== 'todos' || activeLocation !== 'todas') ? ' •' : ''}
         </button>
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.value}
-            className={'chip' + (activeCategory === c.value ? ' active' : '')}
-            onClick={() => setParams({ categoria: c.value })}
-          >
-            {c.label}
-          </button>
-        ))}
+
+        {showFilters && (
+          <div className="filter-balloon">
+            <div className="field-label">Categoria</div>
+            <select
+              className="input"
+              style={{ marginBottom: 14 }}
+              value={activeCategory}
+              onChange={(e) => {
+                const next = new URLSearchParams(params)
+                if (e.target.value === 'todos') next.delete('categoria')
+                else next.set('categoria', e.target.value)
+                setParams(next)
+              }}
+            >
+              <option value="todos">Todas as categorias</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+
+            <div className="field-label">Localização</div>
+            <select
+              className="input"
+              style={{ marginBottom: 16 }}
+              value={activeLocation}
+              onChange={(e) => {
+                const next = new URLSearchParams(params)
+                if (e.target.value === 'todas') next.delete('local')
+                else next.set('local', e.target.value)
+                setParams(next)
+              }}
+            >
+              <option value="todas">Todas as localizações</option>
+              {locations.map((loc) => (
+                <option key={loc} value={loc}>{loc}</option>
+              ))}
+            </select>
+
+            <div className="modal-actions" style={{ marginTop: 0 }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setParams({})}>Limpar filtros</button>
+              <button type="button" className="btn btn-primary" onClick={() => setShowFilters(false)}>Aplicar</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (

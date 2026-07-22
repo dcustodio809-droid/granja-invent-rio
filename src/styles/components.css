@@ -43,6 +43,13 @@
 
 /* ---- Toolbar / search / chips ---- */
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.filter-btn-active { background: var(--bg-tint); color: var(--red); }
+.filter-balloon {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30;
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.12); padding: 18px; width: 260px;
+}
+@media (max-width: 480px) { .filter-balloon { right: -8px; width: calc(100vw - 48px); } }
 .search-input {
   flex: 1; min-width: 200px; height: 44px; border-radius: 10px; background: var(--bg-input);
   border: none; padding: 0 14px; font-size: 13.5px;
