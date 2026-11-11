@@ -12,7 +12,7 @@ Aplicação web para controle de inventário (veículos, máquinas, equipamentos
 ## Fluxo de trabalho obrigatório
 1. Antes de enviar: `npm run build` precisa passar.
 2. Mostrar ao usuário um resumo das mudanças antes do `git push`.
-3. Mudanças de banco: criar `supabase/migration_N.sql` (próxima é a **10**; existem 2 a 9, além de `schema.sql`; 6 a 9 já aplicadas em produção). Migrations devem ser idempotentes (`if not exists`). Se não houver Supabase CLI ligado, o usuário executa no SQL Editor do Supabase; dizer exatamente o que colar.
+3. Mudanças de banco: criar `supabase/migration_N.sql` (próxima é a **11**; existem 2 a 10, além de `schema.sql`; 6 a 10 já aplicadas em produção; na 10 toda entrada tem destination = Almoxarifado). Migrations devem ser idempotentes (`if not exists`). Se não houver Supabase CLI ligado, o usuário executa no SQL Editor do Supabase; dizer exatamente o que colar.
 4. Mudanças de UI com layout novo: mostrar um esboço ao usuário antes de programar (ele pediu isso na etiqueta).
 
 ## Estrutura (src/)

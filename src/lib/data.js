@@ -163,7 +163,8 @@ export async function registerStockUpdate({ material, type, amount, unitPrice, i
     total_value: price !== null ? Number((price * qty).toFixed(2)) : null,
     invoice_number: type === 'entrada' ? (invoiceNumber || null) : null,
     purchase_date: purchaseDate || null,
-    destination: type === 'saida' ? (destination || null) : null,
+    // entrada sempre chega no Almoxarifado; saída vai para o destino escolhido
+    destination: type === 'saida' ? (destination || null) : 'Almoxarifado',
     description: description || null,
     responsible: responsible || '',
     created_by: userId || null,

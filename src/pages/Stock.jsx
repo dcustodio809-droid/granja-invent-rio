@@ -11,6 +11,14 @@ import { UNITS } from '../lib/nfe'
 
 // Para onde o Almoxarifado entrega o material numa saída
 const DESTINATIONS = ['Escritório', 'Gerência', 'Núcleo 1', 'Núcleo 2', 'Núcleo 3']
+// Toda entrada (nota fiscal ou manual) chega no Almoxarifado
+const ENTRY_DESTINATION = 'Almoxarifado'
+const ALL_LOCATIONS = [ENTRY_DESTINATION, ...DESTINATIONS]
+
+// Local da movimentação: entrada é sempre no Almoxarifado; saída é o destino escolhido
+function movementPlace(mv) {
+  return mv.type === 'entrada' ? ENTRY_DESTINATION : mv.destination
+}
 
 function formatBRL(value) {
   if (value === null || value === undefined || value === '') return '—'
@@ -70,7 +78,7 @@ export default function Stock() {
       if (mvFilters.from && day < mvFilters.from) return false
       if (mvFilters.to && day > mvFilters.to) return false
       if (mvFilters.type !== 'todos' && mv.type !== mvFilters.type) return false
-      if (mvFilters.destination !== 'todos' && (mv.type !== 'saida' || mv.destination !== mvFilters.destination)) return false
+      if (mvFilters.destination !== 'todos' && movementPlace(mv) !== mvFilters.destination) return false
       if (mvFilters.materialId !== 'todos' && mv.material_id !== mvFilters.materialId) return false
       if (q) {
         const hay = [mv.invoice_number, mv.description, mv.responsible, mv.material?.name, mv.material?.code].join(' ').toLowerCase()
@@ -168,7 +176,7 @@ export default function Stock() {
     { key: 'date', label: 'Data', render: (r) => (r.purchase_date ? new Date(r.purchase_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date(r.created_at).toLocaleDateString('pt-BR')) },
     { key: 'material', label: 'Material', render: (r) => (r.material ? `${r.material.code ? r.material.code + ' · ' : ''}${r.material.name}` : '—') },
     { key: 'type', label: 'Tipo', render: (r) => (r.type === 'entrada' ? 'Entrada' : 'Saída') },
-    { key: 'destination', label: 'Destino', render: (r) => (r.type === 'saida' ? r.destination || '—' : '—') },
+    { key: 'destination', label: 'Destino', render: (r) => movementPlace(r) || '—' },
     { key: 'qty', label: 'Quantidade', render: (r) => `${r.type === 'entrada' ? '+' : '-'}${r.qty} ${r.material?.unit || ''}` },
     { key: 'unit_price', label: 'Valor unitário', render: (r) => formatBRL(r.unit_price) },
     { key: 'total_value', label: 'Valor total', render: (r) => formatBRL(r.total_value) },
@@ -322,7 +330,7 @@ export default function Stock() {
               <div className="field-label">Local (destino)</div>
               <select className="input" style={{ marginBottom: 12 }} value={mvFilters.destination} onChange={(e) => setMvFilter({ destination: e.target.value })}>
                 <option value="todos">Todos os locais</option>
-                {DESTINATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+                {ALL_LOCATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
 
               <div className="field-label">Material</div>
@@ -364,7 +372,7 @@ export default function Stock() {
                   <td style={{ color: mv.type === 'entrada' ? '#141414' : 'var(--red)', fontWeight: 700 }}>
                     {mv.type === 'entrada' ? 'Entrada' : 'Saída'}
                   </td>
-                  <td>{mv.type === 'saida' ? mv.destination || '—' : '—'}</td>
+                  <td>{movementPlace(mv) || '—'}</td>
                   <td style={{ color: mv.type === 'entrada' ? '#141414' : 'var(--red)', fontWeight: 700 }}>
                     {mv.type === 'entrada' ? '+' : '-'}{mv.qty} {mv.material?.unit}
                   </td>
