@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { createMaterial, deleteMaterials, deleteMovements, listMaterials, listMovements, registerStockUpdate } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import PrintReport from '../components/PrintReport'
 import ImageCropper from '../components/ImageCropper'
+import MaterialLabels, { Label, LABELS_PER_SHEET } from '../components/MaterialLabels'
 
 function formatBRL(value) {
   if (value === null || value === undefined || value === '') return '—'
@@ -19,7 +21,13 @@ export default function Stock() {
   const [showAddMaterial, setShowAddMaterial] = useState(false)
   const [selectedMaterials, setSelectedMaterials] = useState(new Set())
   const [selectedMovements, setSelectedMovements] = useState(new Set())
+  const [labelTargets, setLabelTargets] = useState(null)
   const { user } = useAuth()
+
+  function openLabels() {
+    const list = selectedMaterials.size > 0 ? materials.filter((m) => selectedMaterials.has(m.id)) : materials
+    if (list.length > 0) setLabelTargets(list)
+  }
 
   function load() {
     setLoading(true)
@@ -59,6 +67,7 @@ export default function Stock() {
   }
 
   const materialColumns = [
+    { key: 'code', label: 'Código' },
     { key: 'name', label: 'Material' },
     { key: 'qty', label: 'Quantidade', render: (r) => `${r.qty} ${r.unit}` },
     { key: 'min_qty', label: 'Mínimo', render: (r) => `${r.min_qty} ${r.unit}` },
@@ -95,6 +104,11 @@ export default function Stock() {
               Excluir selecionados ({selectedMovements.size})
             </button>
           )}
+          {tab === 'materiais' && (
+            <button className="btn btn-secondary" onClick={openLabels}>
+              Imprimir etiquetas{selectedMaterials.size > 0 ? ` (${selectedMaterials.size})` : ''}
+            </button>
+          )}
           <button className="btn btn-secondary" onClick={() => window.print()}>Gerar relatório PDF</button>
           {tab === 'materiais' && (
             <button className="btn btn-primary" onClick={() => setShowAddMaterial(true)}>+ Novo material</button>
@@ -121,7 +135,7 @@ export default function Stock() {
                     onChange={() => toggleAllSet(setSelectedMaterials, materials.map((m) => m.id))}
                   />
                 </th>
-                <th>Foto</th><th>Material</th><th>Quantidade</th><th>Mínimo</th><th>Valor unitário</th><th>Valor em estoque</th><th></th>
+                <th>Foto</th><th>Código</th><th>Material</th><th>Quantidade</th><th>Mínimo</th><th>Valor unitário</th><th>Valor em estoque</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -133,6 +147,7 @@ export default function Stock() {
                       <input type="checkbox" checked={selectedMaterials.has(m.id)} onChange={() => toggleSet(setSelectedMaterials, m.id)} />
                     </td>
                     <td>{m.photo_url ? <img className="table-photo" src={m.photo_url} alt="" /> : <div className="table-photo" />}</td>
+                    <td style={{ fontFamily: 'ui-monospace, Consolas, monospace', whiteSpace: 'nowrap' }}>{m.code || '—'}</td>
                     <td style={{ fontWeight: 700 }}>{m.name}</td>
                     <td style={{ color: low ? 'var(--red)' : undefined, fontWeight: low ? 700 : 400 }}>
                       {m.qty} {m.unit}{low ? ' (abaixo do mínimo)' : ''}
@@ -140,11 +155,16 @@ export default function Stock() {
                     <td>{m.min_qty} {m.unit}</td>
                     <td>{formatBRL(m.unit_price)}</td>
                     <td style={{ fontWeight: 700 }}>{formatBRL(Number(m.qty) * Number(m.unit_price || 0))}</td>
-                    <td><button className="btn btn-primary" style={{ height: 34, padding: '0 12px' }} onClick={() => setUpdateTarget(m)}>Atualizar</button></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-secondary" style={{ height: 34, padding: '0 12px' }} onClick={() => setLabelTargets([m])}>Etiqueta</button>
+                        <button className="btn btn-primary" style={{ height: 34, padding: '0 12px' }} onClick={() => setUpdateTarget(m)}>Atualizar</button>
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
-              {materials.length === 0 && <tr><td colSpan={8} className="empty-hint">Nenhum material cadastrado.</td></tr>}
+              {materials.length === 0 && <tr><td colSpan={9} className="empty-hint">Nenhum material cadastrado.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -207,6 +227,10 @@ export default function Stock() {
           onClose={() => setUpdateTarget(null)}
           onDone={() => { setUpdateTarget(null); load() }}
         />
+      )}
+
+      {labelTargets && (
+        <LabelPrintModal materials={labelTargets} onClose={() => setLabelTargets(null)} />
       )}
 
       {showAddMaterial && (
@@ -356,6 +380,92 @@ function StockUpdateModal({ material, userId, onClose, onDone }) {
           <button className="btn btn-primary" onClick={handleConfirm} disabled={saving}>{saving ? 'Salvando...' : 'Confirmar'}</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function LabelPrintModal({ materials, onClose }) {
+  const [copies, setCopies] = useState(() => Object.fromEntries(materials.map((m) => [m.id, 1])))
+  const [startAt, setStartAt] = useState(1)
+  const [printing, setPrinting] = useState(false)
+  const missingCode = materials.some((m) => !m.code)
+
+  const labels = materials.flatMap((m) => Array(Math.max(0, Number(copies[m.id]) || 0)).fill(m))
+  const sheets = labels.length > 0 ? Math.ceil((labels.length + startAt - 1) / LABELS_PER_SHEET) : 0
+
+  function handlePrint() {
+    if (labels.length === 0) return
+    flushSync(() => setPrinting(true))
+    document.body.classList.add('printing-labels')
+    const cleanup = () => {
+      document.body.classList.remove('printing-labels')
+      setPrinting(false)
+      window.removeEventListener('afterprint', cleanup)
+    }
+    window.addEventListener('afterprint', cleanup)
+    // dá tempo para o navegador desenhar os códigos de barras antes de abrir a impressão
+    setTimeout(() => window.print(), 150)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-title">Imprimir etiquetas</div>
+        <div className="modal-sub">Folha A4 adesiva com 21 etiquetas (3 × 7, 63,5 × 38,1 mm — tipo Pimaco A4360)</div>
+
+        <div className="label-preview"><Label material={materials[0]} /></div>
+
+        {missingCode && (
+          <div className="login-error">
+            Há material sem código. Rode a atualização 6 do banco (migration_6.sql) no Supabase antes de imprimir.
+          </div>
+        )}
+
+        <div style={{ maxHeight: 220, overflowY: 'auto', marginBottom: 12 }}>
+          {materials.map((m) => (
+            <div className="label-copies-row" key={m.id}>
+              <div className="label-copies-name">
+                {m.name}
+                <div className="label-copies-code">{m.code || 'sem código'}</div>
+              </div>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                max="210"
+                value={copies[m.id]}
+                onChange={(e) => setCopies((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                aria-label={`Cópias de ${m.name}`}
+              />
+            </div>
+          ))}
+        </div>
+
+        <label className="field-label">Começar na posição da folha (1 a 21)</label>
+        <input
+          className="input"
+          type="number"
+          min="1"
+          max={LABELS_PER_SHEET}
+          value={startAt}
+          onChange={(e) => setStartAt(Math.min(LABELS_PER_SHEET, Math.max(1, Number(e.target.value) || 1)))}
+        />
+        <div className="empty-hint" style={{ padding: '6px 2px 12px' }}>
+          Use se a folha já teve etiquetas usadas. A posição 1 é a do canto superior esquerdo; conta da esquerda para a direita.
+          <br />
+          {labels.length} etiqueta(s) · {sheets} folha(s)
+        </div>
+
+        <div className="empty-hint" style={{ padding: '0 2px 12px' }}>
+          Na janela de impressão, escolha papel A4, margens "Nenhuma" e escala 100%.
+        </div>
+
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Fechar</button>
+          <button className="btn btn-primary" onClick={handlePrint} disabled={labels.length === 0 || missingCode}>Imprimir</button>
+        </div>
+      </div>
+      {printing && <MaterialLabels labels={labels} startAt={startAt} />}
     </div>
   )
 }
