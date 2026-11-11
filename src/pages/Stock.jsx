@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { createMaterial, deleteMaterials, deleteMovements, listMaterials, listMovements, registerStockUpdate } from '../lib/data'
+import { createMaterial, deleteMaterials, deleteMovements, listMaterials, listMovements, registerStockUpdate, updateMaterial } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import PrintReport from '../components/PrintReport'
@@ -17,6 +17,32 @@ function formatBRL(value) {
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+// 'AAAA-MM-DD' no horário local
+function isoDate(d) {
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+// Data da movimentação: a informada (compra/saída) ou, se não houver, o dia do lançamento
+function movementDay(mv) {
+  return mv.purchase_date || isoDate(new Date(mv.created_at))
+}
+
+function formatDay(iso) {
+  return iso ? new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR') : ''
+}
+
+const EMPTY_MV_FILTERS = { from: '', to: '', type: 'todos', destination: 'todos', materialId: 'todos', search: '' }
+
+function quickPeriod(key) {
+  const now = new Date()
+  if (key === 'hoje') return { from: isoDate(now), to: isoDate(now) }
+  if (key === '7dias') return { from: isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)), to: isoDate(now) }
+  if (key === 'mes') return { from: isoDate(new Date(now.getFullYear(), now.getMonth(), 1)), to: isoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)) }
+  if (key === 'mespassado') return { from: isoDate(new Date(now.getFullYear(), now.getMonth() - 1, 1)), to: isoDate(new Date(now.getFullYear(), now.getMonth(), 0)) }
+  return { from: '', to: '' }
+}
+
 export default function Stock() {
   const [tab, setTab] = useState('materiais')
   const [materials, setMaterials] = useState([])
@@ -29,7 +55,64 @@ export default function Stock() {
   const [labelTargets, setLabelTargets] = useState(null)
   const [showImport, setShowImport] = useState(false)
   const [notice, setNotice] = useState('')
+  const [editTarget, setEditTarget] = useState(null)
+  const [mvFilters, setMvFilters] = useState(EMPTY_MV_FILTERS)
+  const [showMvFilters, setShowMvFilters] = useState(false)
   const { user } = useAuth()
+
+  const mvFilterActive =
+    mvFilters.from || mvFilters.to || mvFilters.type !== 'todos' || mvFilters.destination !== 'todos' || mvFilters.materialId !== 'todos'
+
+  const filteredMovements = useMemo(() => {
+    const q = mvFilters.search.trim().toLowerCase()
+    return movements.filter((mv) => {
+      const day = movementDay(mv)
+      if (mvFilters.from && day < mvFilters.from) return false
+      if (mvFilters.to && day > mvFilters.to) return false
+      if (mvFilters.type !== 'todos' && mv.type !== mvFilters.type) return false
+      if (mvFilters.destination !== 'todos' && (mv.type !== 'saida' || mv.destination !== mvFilters.destination)) return false
+      if (mvFilters.materialId !== 'todos' && mv.material_id !== mvFilters.materialId) return false
+      if (q) {
+        const hay = [mv.invoice_number, mv.description, mv.responsible, mv.material?.name, mv.material?.code].join(' ').toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    }).sort((a, b) => {
+      // mais recente primeiro, pela data da movimentação; empate pelo horário do lançamento
+      const d = movementDay(b).localeCompare(movementDay(a))
+      return d !== 0 ? d : String(b.created_at).localeCompare(String(a.created_at))
+    })
+  }, [movements, mvFilters])
+
+  // Resumo do filtro (quantidade somada quando o filtro é de um material só)
+  const mvSummary = useMemo(() => {
+    let text = `${filteredMovements.length} movimentação(ões)`
+    if (mvFilters.materialId !== 'todos' && filteredMovements.length > 0) {
+      const unit = filteredMovements[0].material?.unit || ''
+      const inQty = filteredMovements.filter((m) => m.type === 'entrada').reduce((s, m) => s + Number(m.qty), 0)
+      const outQty = filteredMovements.filter((m) => m.type === 'saida').reduce((s, m) => s + Number(m.qty), 0)
+      text += ` · Entradas: ${inQty.toLocaleString('pt-BR')} ${unit} · Saídas: ${outQty.toLocaleString('pt-BR')} ${unit}`
+    }
+    const value = filteredMovements.filter((m) => m.type === 'entrada').reduce((s, m) => s + Number(m.total_value || 0), 0)
+    if (value > 0) text += ` · Valor das entradas: ${formatBRL(value)}`
+    return text
+  }, [filteredMovements, mvFilters.materialId])
+
+  // Descrição dos filtros para o título do relatório PDF
+  const mvFilterLabel = useMemo(() => {
+    const parts = []
+    if (mvFilters.from || mvFilters.to) parts.push(`${formatDay(mvFilters.from) || 'início'} a ${formatDay(mvFilters.to) || 'hoje'}`)
+    if (mvFilters.type !== 'todos') parts.push(mvFilters.type === 'entrada' ? 'Entradas' : 'Saídas')
+    if (mvFilters.destination !== 'todos') parts.push(`Destino: ${mvFilters.destination}`)
+    if (mvFilters.materialId !== 'todos') parts.push(`Material: ${materials.find((m) => m.id === mvFilters.materialId)?.name || ''}`)
+    if (mvFilters.search.trim()) parts.push(`Busca: "${mvFilters.search.trim()}"`)
+    return parts.join(' · ')
+  }, [mvFilters, materials])
+
+  function setMvFilter(patch) {
+    setMvFilters((prev) => ({ ...prev, ...patch }))
+    setSelectedMovements(new Set())
+  }
 
   function openLabels() {
     const list = selectedMaterials.size > 0 ? materials.filter((m) => selectedMaterials.has(m.id)) : materials
@@ -83,7 +166,7 @@ export default function Stock() {
   ]
   const movementColumns = [
     { key: 'date', label: 'Data', render: (r) => (r.purchase_date ? new Date(r.purchase_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date(r.created_at).toLocaleDateString('pt-BR')) },
-    { key: 'material', label: 'Material', render: (r) => r.material?.name || '—' },
+    { key: 'material', label: 'Material', render: (r) => (r.material ? `${r.material.code ? r.material.code + ' · ' : ''}${r.material.name}` : '—') },
     { key: 'type', label: 'Tipo', render: (r) => (r.type === 'entrada' ? 'Entrada' : 'Saída') },
     { key: 'destination', label: 'Destino', render: (r) => (r.type === 'saida' ? r.destination || '—' : '—') },
     { key: 'qty', label: 'Quantidade', render: (r) => `${r.type === 'entrada' ? '+' : '-'}${r.qty} ${r.material?.unit || ''}` },
@@ -162,7 +245,11 @@ export default function Stock() {
                     <td className="select-col">
                       <input type="checkbox" checked={selectedMaterials.has(m.id)} onChange={() => toggleSet(setSelectedMaterials, m.id)} />
                     </td>
-                    <td>{m.photo_url ? <img className="table-photo" src={m.photo_url} alt="" /> : <div className="table-photo" />}</td>
+                    <td>
+                      <button type="button" className="photo-cell-btn" onClick={() => setEditTarget(m)} title={m.photo_url ? 'Editar material / trocar foto' : 'Adicionar foto'}>
+                        {m.photo_url ? <img className="table-photo" src={m.photo_url} alt="" /> : <div className="table-photo table-photo-add">+ foto</div>}
+                      </button>
+                    </td>
                     <td style={{ fontFamily: 'ui-monospace, Consolas, monospace', whiteSpace: 'nowrap' }}>{m.code || '—'}</td>
                     <td style={{ fontWeight: 700 }}>{m.name}</td>
                     <td style={{ color: low ? 'var(--red)' : undefined, fontWeight: low ? 700 : 400 }}>
@@ -173,6 +260,7 @@ export default function Stock() {
                     <td style={{ fontWeight: 700 }}>{formatBRL(Number(m.qty) * Number(m.unit_price || 0))}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-secondary" style={{ height: 34, padding: '0 12px' }} onClick={() => setEditTarget(m)}>Editar</button>
                         <button className="btn btn-secondary" style={{ height: 34, padding: '0 12px' }} onClick={() => setLabelTargets([m])}>Etiqueta</button>
                         <button className="btn btn-primary" style={{ height: 34, padding: '0 12px' }} onClick={() => setUpdateTarget(m)}>Atualizar</button>
                       </div>
@@ -185,6 +273,72 @@ export default function Stock() {
           </table>
         </div>
       ) : (
+        <>
+        <div className="toolbar" style={{ position: 'relative' }}>
+          <input
+            className="search-input"
+            placeholder="Buscar nota fiscal, material, descrição ou responsável..."
+            value={mvFilters.search}
+            onChange={(e) => setMvFilter({ search: e.target.value })}
+          />
+          <button
+            type="button"
+            className={'btn btn-secondary' + (mvFilterActive ? ' filter-btn-active' : '')}
+            onClick={() => setShowMvFilters((v) => !v)}
+          >
+            Filtros{mvFilterActive ? ' •' : ''}
+          </button>
+
+          {showMvFilters && (
+            <div className="filter-balloon filter-balloon-wide">
+              <div className="field-label">Período</div>
+              <div className="chip-row" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+                {[['hoje', 'Hoje'], ['7dias', '7 dias'], ['mes', 'Este mês'], ['mespassado', 'Mês passado']].map(([k, label]) => {
+                  const p = quickPeriod(k)
+                  const active = mvFilters.from === p.from && mvFilters.to === p.to
+                  return (
+                    <button type="button" key={k} className={'chip chip-small' + (active ? ' active' : '')} onClick={() => setMvFilter(p)}>{label}</button>
+                  )
+                })}
+              </div>
+              <div className="field-grid" style={{ marginBottom: 12 }}>
+                <div>
+                  <label className="filter-sub-label">De</label>
+                  <input className="input" type="date" value={mvFilters.from} onChange={(e) => setMvFilter({ from: e.target.value })} />
+                </div>
+                <div>
+                  <label className="filter-sub-label">Até</label>
+                  <input className="input" type="date" value={mvFilters.to} onChange={(e) => setMvFilter({ to: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="field-label">Tipo</div>
+              <select className="input" style={{ marginBottom: 12 }} value={mvFilters.type} onChange={(e) => setMvFilter({ type: e.target.value })}>
+                <option value="todos">Entradas e saídas</option>
+                <option value="entrada">Só entradas</option>
+                <option value="saida">Só saídas</option>
+              </select>
+
+              <div className="field-label">Local (destino)</div>
+              <select className="input" style={{ marginBottom: 12 }} value={mvFilters.destination} onChange={(e) => setMvFilter({ destination: e.target.value })}>
+                <option value="todos">Todos os locais</option>
+                {DESTINATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+
+              <div className="field-label">Material</div>
+              <select className="input" style={{ marginBottom: 16 }} value={mvFilters.materialId} onChange={(e) => setMvFilter({ materialId: e.target.value })}>
+                <option value="todos">Todos os materiais</option>
+                {materials.map((m) => <option key={m.id} value={m.id}>{m.code ? `${m.code} · ` : ''}{m.name}</option>)}
+              </select>
+
+              <div className="modal-actions" style={{ marginTop: 0 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setMvFilter(EMPTY_MV_FILTERS)}>Limpar filtros</button>
+                <button type="button" className="btn btn-primary" onClick={() => setShowMvFilters(false)}>Aplicar</button>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="empty-hint" style={{ padding: '0 2px 10px' }}>{mvSummary}{mvFilterLabel ? ` — ${mvFilterLabel}` : ''}</div>
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -192,20 +346,20 @@ export default function Stock() {
                 <th className="select-col">
                   <input
                     type="checkbox"
-                    checked={movements.length > 0 && selectedMovements.size === movements.length}
-                    onChange={() => toggleAllSet(setSelectedMovements, movements.map((m) => m.id))}
+                    checked={filteredMovements.length > 0 && selectedMovements.size === filteredMovements.length}
+                    onChange={() => toggleAllSet(setSelectedMovements, filteredMovements.map((m) => m.id))}
                   />
                 </th>
                 <th>Data</th><th>Material</th><th>Tipo</th><th>Destino</th><th>Quantidade</th><th>Valor unitário</th><th>Valor total</th><th>Nota fiscal</th><th>Descrição</th><th>Responsável</th>
               </tr>
             </thead>
             <tbody>
-              {movements.map((mv) => (
+              {filteredMovements.map((mv) => (
                 <tr key={mv.id}>
                   <td className="select-col">
                     <input type="checkbox" checked={selectedMovements.has(mv.id)} onChange={() => toggleSet(setSelectedMovements, mv.id)} />
                   </td>
-                  <td>{mv.purchase_date ? new Date(mv.purchase_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date(mv.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td>{formatDay(movementDay(mv))}</td>
                   <td>{mv.material?.name}</td>
                   <td style={{ color: mv.type === 'entrada' ? '#141414' : 'var(--red)', fontWeight: 700 }}>
                     {mv.type === 'entrada' ? 'Entrada' : 'Saída'}
@@ -221,21 +375,36 @@ export default function Stock() {
                   <td>{mv.responsible || '—'}</td>
                 </tr>
               ))}
-              {movements.length === 0 && <tr><td colSpan={11} className="empty-hint">Nenhuma movimentação registrada.</td></tr>}
+              {filteredMovements.length === 0 && (
+                <tr><td colSpan={11} className="empty-hint">{movements.length === 0 ? 'Nenhuma movimentação registrada.' : 'Nenhuma movimentação com esses filtros.'}</td></tr>
+              )}
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <PrintReport
-        title={tab === 'materiais' ? 'Relatório de Materiais' : 'Relatório de Movimentação de Estoque'}
+        title={
+          tab === 'materiais'
+            ? 'Relatório de Materiais'
+            : `Relatório de Movimentação de Estoque${mvFilterLabel ? ` — ${mvFilterLabel}` : ''}`
+        }
         columns={tab === 'materiais' ? materialColumns : movementColumns}
         rows={
           tab === 'materiais'
             ? (selectedMaterials.size > 0 ? materials.filter((m) => selectedMaterials.has(m.id)) : materials)
-            : (selectedMovements.size > 0 ? movements.filter((m) => selectedMovements.has(m.id)) : movements)
+            : (selectedMovements.size > 0 ? filteredMovements.filter((m) => selectedMovements.has(m.id)) : filteredMovements)
         }
       />
+
+      {editTarget && (
+        <EditMaterialModal
+          material={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={() => { setEditTarget(null); load() }}
+        />
+      )}
 
       {updateTarget && (
         <StockUpdateModal
@@ -511,6 +680,124 @@ function LabelPrintModal({ materials, onClose }) {
         </div>
       </div>
       {printing && <MaterialLabels labels={labels} startAt={startAt} />}
+    </div>
+  )
+}
+
+function EditMaterialModal({ material, onClose, onSaved }) {
+  const [name, setName] = useState(material.name || '')
+  const [unit, setUnit] = useState(material.unit || 'un')
+  const [minQty, setMinQty] = useState(material.min_qty ?? 0)
+  const [unitPrice, setUnitPrice] = useState(material.unit_price ?? '')
+  const [photoUrl, setPhotoUrl] = useState(material.photo_url || null)
+  const [newPhoto, setNewPhoto] = useState(null)
+  const [newPhotoPreview, setNewPhotoPreview] = useState(null)
+  const [cropSrc, setCropSrc] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const unitOptions = UNITS.some((u) => u.value === unit) ? UNITS : [...UNITS, { value: unit, label: unit }]
+
+  function handlePhotoSelect(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setCropSrc({ url: URL.createObjectURL(file), name: file.name })
+  }
+
+  function removePhoto() {
+    setNewPhoto(null)
+    setNewPhotoPreview(null)
+    setPhotoUrl(null)
+  }
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setError('')
+    if (!name.trim()) return setError('Informe o nome do material.')
+    if (String(minQty).trim() === '' || !(Number(minQty) >= 0)) return setError('Informe um estoque mínimo válido (0 ou mais).')
+    setSaving(true)
+    try {
+      let photo_url = photoUrl
+      if (newPhoto) photo_url = await uploadFile(newPhoto, 'materials')
+      await updateMaterial(material.id, {
+        name: name.trim(),
+        unit,
+        min_qty: Number(minQty),
+        unit_price: unitPrice !== '' ? Number(unitPrice) : 0,
+        photo_url,
+      })
+      onSaved()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const shownPhoto = newPhotoPreview || photoUrl
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <form className="modal-sheet" onClick={(e) => e.stopPropagation()} onSubmit={handleSave}>
+        <div className="modal-title">Editar material</div>
+        <div className="modal-sub">
+          {material.code || 'sem código'} · {material.qty} {material.unit} em estoque. A quantidade só muda pelo botão Atualizar (entrada ou saída).
+        </div>
+
+        <div className="edit-photo">
+          {shownPhoto ? <img src={shownPhoto} alt="" /> : <div className="edit-photo-empty">Sem foto</div>}
+          <div className="edit-photo-actions">
+            <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+              {shownPhoto ? 'Trocar foto' : 'Adicionar foto'}
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoSelect} />
+            </label>
+            {shownPhoto && (
+              <button type="button" className="btn" style={{ background: 'var(--bg-tint)', color: 'var(--red)' }} onClick={removePhoto}>
+                Remover foto
+              </button>
+            )}
+          </div>
+        </div>
+
+        <label className="field-label">Nome</label>
+        <input className="input" style={{ marginBottom: 12 }} value={name} onChange={(e) => setName(e.target.value)} required />
+        <div className="field-grid">
+          <div>
+            <label className="field-label">Unidade</label>
+            <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}>
+              {unitOptions.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="field-label">Estoque mínimo</label>
+            <input className="input" type="number" min="0" step="any" value={minQty} onChange={(e) => setMinQty(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Valor unitário</label>
+            <input className="input" type="number" min="0" step="0.01" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} placeholder="R$ 0,00" />
+          </div>
+        </div>
+
+        {cropSrc && (
+          <ImageCropper
+            imageSrc={cropSrc.url}
+            fileName={cropSrc.name}
+            aspect={1}
+            onCancel={() => setCropSrc(null)}
+            onConfirm={(file) => {
+              setNewPhoto(file)
+              setNewPhotoPreview(URL.createObjectURL(file))
+              setCropSrc(null)
+            }}
+          />
+        )}
+
+        {error && <div className="login-error">{error}</div>}
+        <div className="modal-actions">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
+        </div>
+      </form>
     </div>
   )
 }

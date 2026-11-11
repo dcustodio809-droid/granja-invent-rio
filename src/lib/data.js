@@ -80,6 +80,18 @@ export async function updateMaterialQty(materialId, newQty, extra = {}) {
   return data
 }
 
+// Edita dados do material (nome, unidade, mínimo, valor, foto). A quantidade só muda por movimentação.
+export async function updateMaterial(id, patch) {
+  const { data, error } = await supabase
+    .from('materials')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function deleteMaterials(ids) {
   const { error } = await supabase.from('materials').delete().in('id', ids)
   if (error) throw error
@@ -89,7 +101,7 @@ export async function deleteMaterials(ids) {
 export async function listMovements() {
   const { data, error } = await supabase
     .from('movements')
-    .select('*, material:materials(id,name,unit)')
+    .select('*, material:materials(id,code,name,unit)')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data
