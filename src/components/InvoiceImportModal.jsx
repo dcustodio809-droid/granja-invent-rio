@@ -58,6 +58,7 @@ export default function InvoiceImportModal({ materials, onClose, onDone }) {
             remembered: Boolean(linked && materialIds.has(linked)),
             newName: it.description,
             newUnit: mapUnit(it.unit),
+            newMinQty: '',
             qtyInput: String(it.qty),
           }
         })
@@ -89,6 +90,8 @@ export default function InvoiceImportModal({ materials, onClose, onDone }) {
       if (!(Number(r.qtyInput) > 0)) return setError(`Quantidade inválida em: ${r.description}`)
       if (r.action === 'existing' && !r.materialId) return setError(`Escolha o material para: ${r.description}`)
       if (r.action === 'new' && !r.newName.trim()) return setError(`Informe o nome do material novo para: ${r.description}`)
+      if (r.action === 'new' && (String(r.newMinQty).trim() === '' || !(Number(r.newMinQty) >= 0)))
+        return setError(`Informe o estoque mínimo do material novo: ${r.newName || r.description}`)
     }
     setSaving(true)
     try {
@@ -109,6 +112,7 @@ export default function InvoiceImportModal({ materials, onClose, onDone }) {
           material_id: r.action === 'existing' ? r.materialId : null,
           new_name: r.action === 'new' ? r.newName.trim() : null,
           new_unit: r.action === 'new' ? r.newUnit : null,
+          new_min_qty: r.action === 'new' ? Number(r.newMinQty) : null,
           qty: Number(r.qtyInput),
           unit_price: r.unitPrice,
         })),
@@ -182,6 +186,21 @@ export default function InvoiceImportModal({ materials, onClose, onDone }) {
                         <select className="input" value={r.newUnit} onChange={(e) => updateRow(i, { newUnit: e.target.value })} aria-label="Unidade">
                           {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                         </select>
+                      </div>
+                    )}
+
+                    {r.action === 'new' && (
+                      <div className="nfe-qty">
+                        <label>Estoque mínimo *</label>
+                        <input
+                          className="input"
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={r.newMinQty}
+                          onChange={(e) => updateRow(i, { newMinQty: e.target.value })}
+                          placeholder={`em ${UNITS.find((u) => u.value === r.newUnit)?.label || r.newUnit}`}
+                        />
                       </div>
                     )}
 

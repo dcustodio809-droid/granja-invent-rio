@@ -11,7 +11,7 @@ Aplicação web para controle de inventário (veículos, máquinas, equipamentos
 ## Fluxo de trabalho obrigatório
 1. Antes de enviar: `npm run build` precisa passar.
 2. Mostrar ao usuário um resumo das mudanças antes do `git push`.
-3. Mudanças de banco: criar `supabase/migration_N.sql` (próxima é a **9**; existem 2 a 8, além de `schema.sql`; 6, 7 e 8 já aplicadas em produção). Migrations devem ser idempotentes (`if not exists`). Se não houver Supabase CLI ligado, o usuário executa no SQL Editor do Supabase; dizer exatamente o que colar.
+3. Mudanças de banco: criar `supabase/migration_N.sql` (próxima é a **10**; existem 2 a 9, além de `schema.sql`; 6 a 9 já aplicadas em produção). Migrations devem ser idempotentes (`if not exists`). Se não houver Supabase CLI ligado, o usuário executa no SQL Editor do Supabase; dizer exatamente o que colar.
 4. Mudanças de UI com layout novo: mostrar um esboço ao usuário antes de programar (ele pediu isso na etiqueta).
 
 ## Estrutura (src/)
@@ -22,7 +22,7 @@ Aplicação web para controle de inventário (veículos, máquinas, equipamentos
 - `components/PrintReport` + `styles/print.css` — PDF via `window.print()` (elemento `.print-only` + `@media print`).
 - `components/MaterialLabels.jsx` — etiquetas de materiais (folha A4 3×7, 63,5×38,1 mm, tipo Pimaco A4360; Code128 via `jsbarcode`). Renderiza por portal no `body` e imprime com a classe `body.printing-labels` (esconde `#root`). Janela `LabelPrintModal` em `pages/Stock.jsx`: cópias por material e posição inicial na folha.
 - `lib/nfe.js` — leitura do XML da NF-e no navegador (`parseNFe`), lista `UNITS` de unidades do estoque e `mapUnit` (UN→un, M2→m2...).
-- `components/InvoiceImportModal.jsx` — "Importar nota fiscal" (só XML, sem custo): conferência por produto (material existente / novo / ignorar, quantidade editável) e lançamento via RPC `import_invoice` (tudo ou nada). Leitura de PDF/foto por IA foi discutida e adiada (exigiria conta paga e função na Vercel).
+- `components/InvoiceImportModal.jsx` — "Importar nota fiscal" (só XML, sem custo): conferência por produto (material existente / novo com estoque mínimo obrigatório / ignorar, quantidade editável) e lançamento via RPC `import_invoice` (tudo ou nada). Leitura de PDF/foto por IA foi discutida e adiada (exigiria conta paga e função na Vercel).
 - `pages/`: Dashboard (contagem por categoria + notificações de estoque abaixo do mínimo), Items (inventário, filtros em balão, seleção/exclusão, PDF), ItemDetail (várias fotos, editar), Stock (abas Materiais/Movimentação, valor unitário e total, atualizar estoque), Users (gestor), Audit (gestor), Login, Profile.
 
 ## Banco de dados
