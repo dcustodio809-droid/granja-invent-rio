@@ -164,6 +164,33 @@ table.data-table tr:last-child td { border-bottom: none; }
 .nfe-qty label { font-size: 11.5px; font-weight: 700; color: #555; white-space: nowrap; }
 .nfe-qty input { flex: 1; min-width: 0; }
 @media (max-width: 640px) { .nfe-row { grid-template-columns: 1fr; } .nfe-summary { grid-template-columns: 1fr 1fr; } }
+
+/* ---- Nota fiscal digitada à mão ---- */
+.manual-head { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.manual-lines { border-top: 1px solid #eee; padding-top: 8px; }
+.manual-line { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, .8fr) minmax(0, .9fr) 34px; gap: 8px; align-items: center; }
+.manual-line-head span { font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase; }
+.manual-line-block { padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+.manual-new { display: grid; grid-template-columns: minmax(0, 2fr) 110px minmax(0, 1fr); gap: 8px; margin-top: 6px; }
+.manual-remove { height: 34px; border: none; border-radius: 8px; background: var(--bg-input); font-size: 18px; color: #555; cursor: pointer; }
+.manual-remove:hover { color: var(--red); background: var(--bg-tint); }
+.manual-add { background: none; border: none; color: var(--red); font-weight: 700; font-size: 13px; padding: 10px 0; cursor: pointer; }
+.manual-total { font-size: 13px; color: #141414; text-align: right; }
+@media (max-width: 640px) {
+  .manual-head { grid-template-columns: 1fr 1fr; }
+  .manual-line { grid-template-columns: minmax(0, 1fr) 70px 80px 30px; }
+  .manual-new { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---- Botões de ícone na tabela de materiais ---- */
+.icon-btn {
+  width: 36px; height: 34px; border-radius: 8px; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-input); color: #141414;
+}
+.icon-btn:hover { background: var(--bg-tint); color: var(--red); }
+.icon-btn.primary { background: var(--red); color: #fff; }
+.icon-btn.primary:hover { filter: brightness(.92); color: #fff; }
 .modal-actions .btn { flex: 1; }
 
 /* ---- Item detail ---- */

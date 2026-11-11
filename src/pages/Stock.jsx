@@ -40,6 +40,17 @@ function formatDay(iso) {
   return iso ? new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR') : ''
 }
 
+// Colunas da tabela de materiais que ordenam ao clicar no título (igual ao Inventário)
+const MATERIAL_SORT_COLUMNS = [
+  { key: 'photo', label: 'Foto' },
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Material' },
+  { key: 'qty', label: 'Quantidade' },
+  { key: 'min_qty', label: 'Mínimo' },
+  { key: 'unit_price', label: 'Valor unitário' },
+  { key: 'total_value', label: 'Valor em estoque' },
+]
+
 const EMPTY_MV_FILTERS = { from: '', to: '', type: 'todos', destination: 'todos', materialId: 'todos', search: '' }
 
 function quickPeriod(key) {
@@ -56,14 +67,37 @@ export default function Stock() {
   const [materials, setMaterials] = useState([])
   const [movements, setMovements] = useState([])
   const [loading, setLoading] = useState(true)
-  const [updateTarget, setUpdateTarget] = useState(null)
+  const [materialTarget, setMaterialTarget] = useState(null) // { material, tab: 'movimentar' | 'editar' }
+  const [matSort, setMatSort] = useState({ key: 'name', dir: 'asc' })
   const [showAddMaterial, setShowAddMaterial] = useState(false)
   const [selectedMaterials, setSelectedMaterials] = useState(new Set())
   const [selectedMovements, setSelectedMovements] = useState(new Set())
   const [labelTargets, setLabelTargets] = useState(null)
   const [showImport, setShowImport] = useState(false)
   const [notice, setNotice] = useState('')
-  const [editTarget, setEditTarget] = useState(null)
+
+  function handleMatSort(key) {
+    setMatSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+  }
+
+  const sortedMaterials = useMemo(() => {
+    const value = (m) => {
+      switch (matSort.key) {
+        case 'photo': return m.photo_url ? 0 : 1 // com foto primeiro
+        case 'qty': return Number(m.qty) || 0
+        case 'min_qty': return Number(m.min_qty) || 0
+        case 'unit_price': return Number(m.unit_price) || 0
+        case 'total_value': return (Number(m.qty) || 0) * (Number(m.unit_price) || 0)
+        default: return String(m[matSort.key] || '').toLowerCase()
+      }
+    }
+    return [...materials].sort((a, b) => {
+      const va = value(a)
+      const vb = value(b)
+      const cmp = typeof va === 'number' ? va - vb : va.localeCompare(vb, 'pt-BR', { numeric: true })
+      return (matSort.dir === 'asc' ? cmp : -cmp) || String(a.name).localeCompare(String(b.name), 'pt-BR')
+    })
+  }, [materials, matSort])
   const [mvFilters, setMvFilters] = useState(EMPTY_MV_FILTERS)
   const [showMvFilters, setShowMvFilters] = useState(false)
   const { user } = useAuth()
@@ -242,11 +276,16 @@ export default function Stock() {
                     onChange={() => toggleAllSet(setSelectedMaterials, materials.map((m) => m.id))}
                   />
                 </th>
-                <th>Foto</th><th>Código</th><th>Material</th><th>Quantidade</th><th>Mínimo</th><th>Valor unitário</th><th>Valor em estoque</th><th></th>
+                {MATERIAL_SORT_COLUMNS.map((col) => (
+                  <th key={col.key} className="sortable-th" onClick={() => handleMatSort(col.key)} title="Clique para ordenar">
+                    {col.label}{matSort.key === col.key ? (matSort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
+                  </th>
+                ))}
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              {materials.map((m) => {
+              {sortedMaterials.map((m) => {
                 const low = Number(m.qty) <= Number(m.min_qty)
                 return (
                   <tr key={m.id}>
@@ -254,7 +293,7 @@ export default function Stock() {
                       <input type="checkbox" checked={selectedMaterials.has(m.id)} onChange={() => toggleSet(setSelectedMaterials, m.id)} />
                     </td>
                     <td>
-                      <button type="button" className="photo-cell-btn" onClick={() => setEditTarget(m)} title={m.photo_url ? 'Editar material / trocar foto' : 'Adicionar foto'}>
+                      <button type="button" className="photo-cell-btn" onClick={() => setMaterialTarget({ material: m, tab: 'editar' })} title={m.photo_url ? 'Editar material / trocar foto' : 'Adicionar foto'}>
                         {m.photo_url ? <img className="table-photo" src={m.photo_url} alt="" /> : <div className="table-photo table-photo-add">+ foto</div>}
                       </button>
                     </td>
@@ -268,9 +307,19 @@ export default function Stock() {
                     <td style={{ fontWeight: 700 }}>{formatBRL(Number(m.qty) * Number(m.unit_price || 0))}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-secondary" style={{ height: 34, padding: '0 12px' }} onClick={() => setEditTarget(m)}>Editar</button>
-                        <button className="btn btn-secondary" style={{ height: 34, padding: '0 12px' }} onClick={() => setLabelTargets([m])}>Etiqueta</button>
-                        <button className="btn btn-primary" style={{ height: 34, padding: '0 12px' }} onClick={() => setUpdateTarget(m)}>Atualizar</button>
+                        <button type="button" className="icon-btn primary" title="Entrada / saída e editar dados" aria-label={`Atualizar ou editar ${m.name}`}
+                          onClick={() => setMaterialTarget({ material: m, tab: 'movimentar' })}>
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M4 20h4L18.5 9.5a2.83 2.83 0 0 0-4-4L4 16v4" /><path d="M13.5 6.5l4 4" />
+                          </svg>
+                        </button>
+                        <button type="button" className="icon-btn" title="Imprimir etiqueta" aria-label={`Imprimir etiqueta de ${m.name}`}
+                          onClick={() => setLabelTargets([m])}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                            <path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2" />
+                            <path d="M8 8v8M11 8v8M14 8v8M17 8v8" />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -401,27 +450,29 @@ export default function Stock() {
         columns={tab === 'materiais' ? materialColumns : movementColumns}
         rows={
           tab === 'materiais'
-            ? (selectedMaterials.size > 0 ? materials.filter((m) => selectedMaterials.has(m.id)) : materials)
+            ? (selectedMaterials.size > 0 ? sortedMaterials.filter((m) => selectedMaterials.has(m.id)) : sortedMaterials)
             : (selectedMovements.size > 0 ? filteredMovements.filter((m) => selectedMovements.has(m.id)) : filteredMovements)
         }
       />
 
-      {editTarget && (
-        <EditMaterialModal
-          material={editTarget}
-          onClose={() => setEditTarget(null)}
-          onSaved={() => { setEditTarget(null); load() }}
-        />
-      )}
-
-      {updateTarget && (
-        <StockUpdateModal
-          material={updateTarget}
-          userId={user?.id}
-          onClose={() => setUpdateTarget(null)}
-          onDone={() => { setUpdateTarget(null); load() }}
-        />
-      )}
+      {materialTarget && (() => {
+        // Janela do lápis: abas "Entrada / saída" e "Editar dados"
+        const tabs = (
+          <div className="segmented" style={{ width: '100%', marginBottom: 16 }}>
+            <button type="button" className={'segmented-item' + (materialTarget.tab === 'movimentar' ? ' active' : '')} style={{ flex: 1 }}
+              onClick={() => setMaterialTarget((t) => ({ ...t, tab: 'movimentar' }))}>Entrada / saída</button>
+            <button type="button" className={'segmented-item' + (materialTarget.tab === 'editar' ? ' active' : '')} style={{ flex: 1 }}
+              onClick={() => setMaterialTarget((t) => ({ ...t, tab: 'editar' }))}>Editar dados</button>
+          </div>
+        )
+        const close = () => setMaterialTarget(null)
+        const done = () => { setMaterialTarget(null); load() }
+        return materialTarget.tab === 'editar' ? (
+          <EditMaterialModal key="editar" material={materialTarget.material} tabs={tabs} onClose={close} onSaved={done} />
+        ) : (
+          <StockUpdateModal key="movimentar" material={materialTarget.material} tabs={tabs} userId={user?.id} onClose={close} onDone={done} />
+        )
+      })()}
 
       {showImport && (
         <InvoiceImportModal
@@ -451,7 +502,7 @@ export default function Stock() {
   )
 }
 
-function StockUpdateModal({ material, userId, onClose, onDone }) {
+function StockUpdateModal({ material, tabs, userId, onClose, onDone }) {
   const [type, setType] = useState('entrada')
   const [amount, setAmount] = useState('')
   const [unitPrice, setUnitPrice] = useState(material.unit_price || '')
@@ -500,8 +551,9 @@ function StockUpdateModal({ material, userId, onClose, onDone }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-title">Atualizar estoque</div>
-        <div className="modal-sub">{material.name} · {material.qty} {material.unit} em estoque</div>
+        <div className="modal-title">{material.code ? `${material.code} · ` : ''}{material.name}</div>
+        {tabs}
+        <div className="modal-sub">{material.qty} {material.unit} em estoque</div>
 
         <div className="segmented" style={{ width: '100%', marginBottom: 16 }}>
           <button
@@ -692,7 +744,7 @@ function LabelPrintModal({ materials, onClose }) {
   )
 }
 
-function EditMaterialModal({ material, onClose, onSaved }) {
+function EditMaterialModal({ material, tabs, onClose, onSaved }) {
   const [name, setName] = useState(material.name || '')
   const [unit, setUnit] = useState(material.unit || 'un')
   const [minQty, setMinQty] = useState(material.min_qty ?? 0)
@@ -747,7 +799,8 @@ function EditMaterialModal({ material, onClose, onSaved }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <form className="modal-sheet" onClick={(e) => e.stopPropagation()} onSubmit={handleSave}>
-        <div className="modal-title">Editar material</div>
+        <div className="modal-title">{material.code ? `${material.code} · ` : ''}{material.name}</div>
+        {tabs}
         <div className="modal-sub">
           {material.code || 'sem código'} · {material.qty} {material.unit} em estoque. A quantidade só muda pelo botão Atualizar (entrada ou saída).
         </div>
