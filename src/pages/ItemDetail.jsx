@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { CATEGORIES, categoryLabel, getItem, updateItem, addItemPhoto, removeItemPhoto } from '../lib/data'
 import { uploadFile } from '../lib/supabaseClient'
 import ImageCropper from '../components/ImageCropper'
+import { locationOptions } from '../lib/locations'
 
 export default function ItemDetail() {
   const { id } = useParams()
@@ -119,7 +120,7 @@ function EditModal({ item, onClose, onSaved, onPhotosChanged }) {
   const [renavam, setRenavam] = useState(item.renavam || '')
   const [chassi, setChassi] = useState(item.chassi || '')
   const [qty, setQty] = useState(item.qty)
-  const [location, setLocation] = useState(item.location || '')
+  const [location, setLocation] = useState((item.location || '').trim())
   const [description, setDescription] = useState(item.description || '')
   const [saving, setSaving] = useState(false)
   const [currentItem, setCurrentItem] = useState(item)
@@ -239,7 +240,13 @@ function EditModal({ item, onClose, onSaved, onPhotosChanged }) {
           )}
 
           <div><label className="field-label">Quantidade</label><input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} /></div>
-          <div><label className="field-label">Localização</label><input className="input" value={location} onChange={(e) => setLocation(e.target.value)} /></div>
+          <div>
+            <label className="field-label">Localização</label>
+            <select className="input" value={location} onChange={(e) => setLocation(e.target.value)}>
+              <option value="">Escolha o local...</option>
+              {locationOptions(location).map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
         </div>
 
         <label className="field-label">Descrição</label>

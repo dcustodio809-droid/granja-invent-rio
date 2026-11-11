@@ -182,6 +182,11 @@ table.data-table tr:last-child td { border-bottom: none; }
   .manual-new { grid-template-columns: 1fr 1fr; }
 }
 
+.low-stock-badge {
+  display: inline-block; white-space: nowrap; padding: 4px 10px; border-radius: 20px;
+  background: var(--bg-tint); color: var(--red); font-size: 11.5px; font-weight: 800;
+}
+
 /* ---- Botões de ícone na tabela de materiais ---- */
 .icon-btn {
   width: 36px; height: 34px; border-radius: 8px; border: none; cursor: pointer;

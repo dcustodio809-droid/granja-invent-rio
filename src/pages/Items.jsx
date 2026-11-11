@@ -5,6 +5,7 @@ import { uploadFile } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import PrintReport from '../components/PrintReport'
 import ImageCropper from '../components/ImageCropper'
+import { locationOptions } from '../lib/locations'
 
 const COLUMNS = [
   { key: 'name', label: 'Item' },
@@ -367,7 +368,10 @@ function AddItemModal({ onClose, onCreated, userId }) {
           </div>
           <div>
             <label className="field-label">Localização</label>
-            <input className="input" value={location} onChange={(e) => setLocation(e.target.value)} />
+            <select className="input" value={location} onChange={(e) => setLocation(e.target.value)}>
+              <option value="">Escolha o local...</option>
+              {locationOptions(location).map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
           </div>
         </div>
 

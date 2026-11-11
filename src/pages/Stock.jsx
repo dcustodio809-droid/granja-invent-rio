@@ -8,9 +8,10 @@ import ImageCropper from '../components/ImageCropper'
 import MaterialLabels, { Label, LABELS_PER_SHEET } from '../components/MaterialLabels'
 import InvoiceImportModal from '../components/InvoiceImportModal'
 import { UNITS } from '../lib/nfe'
+import { LOCATIONS } from '../lib/locations'
 
 // Para onde o Almoxarifado entrega o material numa saída
-const DESTINATIONS = ['Escritório', 'Gerência', 'Núcleo 1', 'Núcleo 2', 'Núcleo 3']
+const DESTINATIONS = LOCATIONS.filter((l) => l !== 'Almoxarifado')
 // Toda entrada (nota fiscal ou manual) chega no Almoxarifado
 const ENTRY_DESTINATION = 'Almoxarifado'
 const ALL_LOCATIONS = [ENTRY_DESTINATION, ...DESTINATIONS]
@@ -46,9 +47,9 @@ const MATERIAL_SORT_COLUMNS = [
   { key: 'code', label: 'Código' },
   { key: 'name', label: 'Material' },
   { key: 'qty', label: 'Quantidade' },
-  { key: 'min_qty', label: 'Mínimo' },
   { key: 'unit_price', label: 'Valor unitário' },
   { key: 'total_value', label: 'Valor em estoque' },
+  { key: 'low', label: 'Aviso' },
 ]
 
 const EMPTY_MV_FILTERS = { from: '', to: '', type: 'todos', destination: 'todos', materialId: 'todos', search: '' }
@@ -85,7 +86,7 @@ export default function Stock() {
       switch (matSort.key) {
         case 'photo': return m.photo_url ? 0 : 1 // com foto primeiro
         case 'qty': return Number(m.qty) || 0
-        case 'min_qty': return Number(m.min_qty) || 0
+        case 'low': return Number(m.qty) <= Number(m.min_qty) ? 0 : 1 // abaixo do mínimo primeiro
         case 'unit_price': return Number(m.unit_price) || 0
         case 'total_value': return (Number(m.qty) || 0) * (Number(m.unit_price) || 0)
         default: return String(m[matSort.key] || '').toLowerCase()
@@ -202,9 +203,9 @@ export default function Stock() {
     { key: 'code', label: 'Código' },
     { key: 'name', label: 'Material' },
     { key: 'qty', label: 'Quantidade', render: (r) => `${r.qty} ${r.unit}` },
-    { key: 'min_qty', label: 'Mínimo', render: (r) => `${r.min_qty} ${r.unit}` },
     { key: 'unit_price', label: 'Valor unitário', render: (r) => formatBRL(r.unit_price) },
     { key: 'total_value', label: 'Valor em estoque', render: (r) => formatBRL(Number(r.qty) * Number(r.unit_price || 0)) },
+    { key: 'low', label: 'Aviso', render: (r) => (Number(r.qty) <= Number(r.min_qty) ? 'Abaixo do mínimo' : '') },
   ]
   const movementColumns = [
     { key: 'date', label: 'Data', render: (r) => (r.purchase_date ? new Date(r.purchase_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date(r.created_at).toLocaleDateString('pt-BR')) },
@@ -299,12 +300,10 @@ export default function Stock() {
                     </td>
                     <td style={{ fontFamily: 'ui-monospace, Consolas, monospace', whiteSpace: 'nowrap' }}>{m.code || '—'}</td>
                     <td style={{ fontWeight: 700 }}>{m.name}</td>
-                    <td style={{ color: low ? 'var(--red)' : undefined, fontWeight: low ? 700 : 400 }}>
-                      {m.qty} {m.unit}{low ? ' (abaixo do mínimo)' : ''}
-                    </td>
-                    <td>{m.min_qty} {m.unit}</td>
+                    <td>{m.qty} {m.unit}</td>
                     <td>{formatBRL(m.unit_price)}</td>
                     <td style={{ fontWeight: 700 }}>{formatBRL(Number(m.qty) * Number(m.unit_price || 0))}</td>
+                    <td>{low && <span className="low-stock-badge" title={`Mínimo: ${m.min_qty} ${m.unit}`}>Abaixo do mínimo</span>}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button type="button" className="icon-btn primary" title="Entrada / saída e editar dados" aria-label={`Atualizar ou editar ${m.name}`}
@@ -325,7 +324,7 @@ export default function Stock() {
                   </tr>
                 )
               })}
-              {materials.length === 0 && <tr><td colSpan={9} className="empty-hint">Nenhum material cadastrado.</td></tr>}
+              {materials.length === 0 && <tr><td colSpan={10} className="empty-hint">Nenhum material cadastrado.</td></tr>}
             </tbody>
           </table>
         </div>
