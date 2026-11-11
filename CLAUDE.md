@@ -6,6 +6,7 @@ Aplicação web para controle de inventário (veículos, máquinas, equipamentos
 - React 18 + Vite 5 + react-router-dom 6 (SPA, 100% client-side). Não atualizar para Vite 8 nem React 19 (Vite 8 quebra no sandbox).
 - Supabase: Postgres com RLS, Auth (e-mail/senha, contas criadas manualmente pelo gestor, sem auto-cadastro) e Storage (bucket `granja-uploads`, fotos).
 - Deploy: GitHub → Vercel (build automático a cada push na branch principal). Produção: https://granja-invent-rio.vercel.app
+- `vercel.json` reescreve todas as rotas para `/index.html` (SPA). Sem ele, recarregar qualquer página que não seja `/` dá 404 NOT_FOUND na Vercel.
 - Variáveis na Vercel: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Local: `.env.local` (nunca versionar). Nunca usar nem pedir a chave `service_role` no front-end.
 
 ## Fluxo de trabalho obrigatório
