@@ -107,7 +107,7 @@ export async function deleteMovements(ids) {
 }
 
 // Registra uma movimentação de estoque (entrada soma, saída subtrai) e atualiza o saldo do material
-export async function registerStockUpdate({ material, type, amount, unitPrice, invoiceNumber, purchaseDate, description, responsible, userId }) {
+export async function registerStockUpdate({ material, type, amount, unitPrice, invoiceNumber, purchaseDate, destination, description, responsible, userId }) {
   const qty = Number(amount)
   if (!qty || qty <= 0) return null
   const newQty = type === 'entrada' ? Number(material.qty) + qty : Math.max(0, Number(material.qty) - qty)
@@ -120,6 +120,7 @@ export async function registerStockUpdate({ material, type, amount, unitPrice, i
     total_value: price !== null ? Number((price * qty).toFixed(2)) : null,
     invoice_number: type === 'entrada' ? (invoiceNumber || null) : null,
     purchase_date: purchaseDate || null,
+    destination: type === 'saida' ? (destination || null) : null,
     description: description || null,
     responsible: responsible || '',
     created_by: userId || null,

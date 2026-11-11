@@ -7,6 +7,9 @@ import PrintReport from '../components/PrintReport'
 import ImageCropper from '../components/ImageCropper'
 import MaterialLabels, { Label, LABELS_PER_SHEET } from '../components/MaterialLabels'
 
+// Para onde o Almoxarifado entrega o material numa saída
+const DESTINATIONS = ['Escritório', 'Gerência', 'Núcleo 1', 'Núcleo 2', 'Núcleo 3']
+
 function formatBRL(value) {
   if (value === null || value === undefined || value === '') return '—'
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -78,6 +81,7 @@ export default function Stock() {
     { key: 'date', label: 'Data', render: (r) => (r.purchase_date ? new Date(r.purchase_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date(r.created_at).toLocaleDateString('pt-BR')) },
     { key: 'material', label: 'Material', render: (r) => r.material?.name || '—' },
     { key: 'type', label: 'Tipo', render: (r) => (r.type === 'entrada' ? 'Entrada' : 'Saída') },
+    { key: 'destination', label: 'Destino', render: (r) => (r.type === 'saida' ? r.destination || '—' : '—') },
     { key: 'qty', label: 'Quantidade', render: (r) => `${r.type === 'entrada' ? '+' : '-'}${r.qty} ${r.material?.unit || ''}` },
     { key: 'unit_price', label: 'Valor unitário', render: (r) => formatBRL(r.unit_price) },
     { key: 'total_value', label: 'Valor total', render: (r) => formatBRL(r.total_value) },
@@ -180,7 +184,7 @@ export default function Stock() {
                     onChange={() => toggleAllSet(setSelectedMovements, movements.map((m) => m.id))}
                   />
                 </th>
-                <th>Data</th><th>Material</th><th>Tipo</th><th>Quantidade</th><th>Valor unitário</th><th>Valor total</th><th>Nota fiscal</th><th>Descrição</th><th>Responsável</th>
+                <th>Data</th><th>Material</th><th>Tipo</th><th>Destino</th><th>Quantidade</th><th>Valor unitário</th><th>Valor total</th><th>Nota fiscal</th><th>Descrição</th><th>Responsável</th>
               </tr>
             </thead>
             <tbody>
@@ -194,6 +198,7 @@ export default function Stock() {
                   <td style={{ color: mv.type === 'entrada' ? '#141414' : 'var(--red)', fontWeight: 700 }}>
                     {mv.type === 'entrada' ? 'Entrada' : 'Saída'}
                   </td>
+                  <td>{mv.type === 'saida' ? mv.destination || '—' : '—'}</td>
                   <td style={{ color: mv.type === 'entrada' ? '#141414' : 'var(--red)', fontWeight: 700 }}>
                     {mv.type === 'entrada' ? '+' : '-'}{mv.qty} {mv.material?.unit}
                   </td>
@@ -204,7 +209,7 @@ export default function Stock() {
                   <td>{mv.responsible || '—'}</td>
                 </tr>
               ))}
-              {movements.length === 0 && <tr><td colSpan={10} className="empty-hint">Nenhuma movimentação registrada.</td></tr>}
+              {movements.length === 0 && <tr><td colSpan={11} className="empty-hint">Nenhuma movimentação registrada.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -252,6 +257,7 @@ function StockUpdateModal({ material, userId, onClose, onDone }) {
   const [movementDate, setMovementDate] = useState('')
   const [description, setDescription] = useState('')
   const [responsible, setResponsible] = useState('')
+  const [destination, setDestination] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const totalValue = amount && unitPrice ? Number(amount) * Number(unitPrice) : 0
@@ -263,6 +269,10 @@ function StockUpdateModal({ material, userId, onClose, onDone }) {
       setError('Informe uma quantidade válida.')
       return
     }
+    if (type === 'saida' && !destination) {
+      setError('Escolha para onde o material foi.')
+      return
+    }
     setSaving(true)
     try {
       await registerStockUpdate({
@@ -272,6 +282,7 @@ function StockUpdateModal({ material, userId, onClose, onDone }) {
         unitPrice: unitPrice !== '' ? unitPrice : null,
         invoiceNumber: type === 'entrada' ? invoiceNumber : null,
         purchaseDate: movementDate || null,
+        destination: type === 'saida' ? destination : null,
         description,
         responsible,
         userId,
@@ -321,9 +332,18 @@ function StockUpdateModal({ material, userId, onClose, onDone }) {
             </div>
           </div>
         ) : (
-          <div style={{ marginBottom: 14 }}>
-            <label className="field-label">Data de saída</label>
-            <input className="input" type="date" value={movementDate} onChange={(e) => setMovementDate(e.target.value)} />
+          <div className="field-grid">
+            <div>
+              <label className="field-label">Destino (para onde foi)</label>
+              <select className="input" value={destination} onChange={(e) => setDestination(e.target.value)}>
+                <option value="">Escolha...</option>
+                {DESTINATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="field-label">Data de saída</label>
+              <input className="input" type="date" value={movementDate} onChange={(e) => setMovementDate(e.target.value)} />
+            </div>
           </div>
         )}
 
@@ -516,7 +536,8 @@ function AddMaterialModal({ userId, onClose, onCreated }) {
             <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}>
               <option value="kg">kg</option>
               <option value="un">un</option>
-              <option value="L">L</option>
+              <option value="L">litros (L)</option>
+              <option value="lata">latas</option>
               <option value="sc">saco</option>
               <option value="cx">caixas</option>
             </select>

@@ -11,7 +11,7 @@ Aplicação web para controle de inventário (veículos, máquinas, equipamentos
 ## Fluxo de trabalho obrigatório
 1. Antes de enviar: `npm run build` precisa passar.
 2. Mostrar ao usuário um resumo das mudanças antes do `git push`.
-3. Mudanças de banco: criar `supabase/migration_N.sql` (próxima é a **7**; existem 2 a 6, além de `schema.sql`; a 6 já foi aplicada em produção em 10/11/2026). Migrations devem ser idempotentes (`if not exists`). Se não houver Supabase CLI ligado, o usuário executa no SQL Editor do Supabase; dizer exatamente o que colar.
+3. Mudanças de banco: criar `supabase/migration_N.sql` (próxima é a **8**; existem 2 a 7, além de `schema.sql`; 6 e 7 já aplicadas em produção). Migrations devem ser idempotentes (`if not exists`). Se não houver Supabase CLI ligado, o usuário executa no SQL Editor do Supabase; dizer exatamente o que colar.
 4. Mudanças de UI com layout novo: mostrar um esboço ao usuário antes de programar (ele pediu isso na etiqueta).
 
 ## Estrutura (src/)
@@ -24,7 +24,7 @@ Aplicação web para controle de inventário (veículos, máquinas, equipamentos
 - `pages/`: Dashboard (contagem por categoria + notificações de estoque abaixo do mínimo), Items (inventário, filtros em balão, seleção/exclusão, PDF), ItemDetail (várias fotos, editar), Stock (abas Materiais/Movimentação, valor unitário e total, atualizar estoque), Users (gestor), Audit (gestor), Login, Profile.
 
 ## Banco de dados
-- Tabelas: `profiles` (role: gestor/funcionario), `items` (inclui `photos text[]`, `photo_url` = `photos[0]`, plate/renavam/chassi), `materials` (inclui `unit_price` e `code` único `GLD-0001`… gerado pelo trigger `materials_set_code` / sequência `materials_code_seq`), `movements` (inclui invoice_number, purchase_date, unit_price, total_value), `audit_log`.
+- Tabelas: `profiles` (role: gestor/funcionario), `items` (inclui `photos text[]`, `photo_url` = `photos[0]`, plate/renavam/chassi), `materials` (inclui `unit_price` e `code` único `GLD-0001`… gerado pelo trigger `materials_set_code` / sequência `materials_code_seq`), `movements` (inclui invoice_number, purchase_date, unit_price, total_value, destination — destino da saída: Escritório, Gerência, Núcleo 1–3, lista `DESTINATIONS` em Stock.jsx), `audit_log`.
 - Categorias de item: veiculo, maquina ("Máquinas e Implementos"), equipamento, ferramenta.
 - RLS: usuários autenticados leem/escrevem items, materials, movements. `profiles` completo e `audit_log` só para gestor, via função `current_user_role()` (SECURITY DEFINER, evita recursão).
 - Triggers de auditoria (`audit_trigger_fn`) em items, materials e movements.
