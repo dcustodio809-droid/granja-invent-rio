@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext'
 import PrintReport from '../components/PrintReport'
 import ImageCropper from '../components/ImageCropper'
 import MaterialLabels, { Label, LABELS_PER_SHEET } from '../components/MaterialLabels'
+import InvoiceImportModal from '../components/InvoiceImportModal'
+import { UNITS } from '../lib/nfe'
 
 // Para onde o Almoxarifado entrega o material numa saída
 const DESTINATIONS = ['Escritório', 'Gerência', 'Núcleo 1', 'Núcleo 2', 'Núcleo 3']
@@ -25,6 +27,8 @@ export default function Stock() {
   const [selectedMaterials, setSelectedMaterials] = useState(new Set())
   const [selectedMovements, setSelectedMovements] = useState(new Set())
   const [labelTargets, setLabelTargets] = useState(null)
+  const [showImport, setShowImport] = useState(false)
+  const [notice, setNotice] = useState('')
   const { user } = useAuth()
 
   function openLabels() {
@@ -108,6 +112,7 @@ export default function Stock() {
               Excluir selecionados ({selectedMovements.size})
             </button>
           )}
+          <button className="btn btn-secondary" onClick={() => { setNotice(''); setShowImport(true) }}>Importar nota fiscal</button>
           {tab === 'materiais' && (
             <button className="btn btn-secondary" onClick={openLabels}>
               Imprimir etiquetas{selectedMaterials.size > 0 ? ` (${selectedMaterials.size})` : ''}
@@ -119,6 +124,13 @@ export default function Stock() {
           )}
         </div>
       </div>
+
+      {notice && (
+        <div className="alert-row" style={{ marginBottom: 12 }} onClick={() => setNotice('')}>
+          <span className="alert-dot" />
+          <div style={{ fontWeight: 700 }}>{notice}</div>
+        </div>
+      )}
 
       <div className="segmented">
         <button className={'segmented-item' + (tab === 'materiais' ? ' active' : '')} onClick={() => setTab('materiais')}>Materiais</button>
@@ -231,6 +243,19 @@ export default function Stock() {
           userId={user?.id}
           onClose={() => setUpdateTarget(null)}
           onDone={() => { setUpdateTarget(null); load() }}
+        />
+      )}
+
+      {showImport && (
+        <InvoiceImportModal
+          materials={materials}
+          onClose={() => setShowImport(false)}
+          onDone={(count, number) => {
+            setShowImport(false)
+            setNotice(`Nota fiscal nº ${number} importada: ${count} entrada(s) lançada(s) no estoque.`)
+            setTab('movimentacao')
+            load()
+          }}
         />
       )}
 
@@ -534,12 +559,7 @@ function AddMaterialModal({ userId, onClose, onCreated }) {
           <div>
             <label className="field-label">Unidade</label>
             <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}>
-              <option value="kg">kg</option>
-              <option value="un">un</option>
-              <option value="L">litros (L)</option>
-              <option value="lata">latas</option>
-              <option value="sc">saco</option>
-              <option value="cx">caixas</option>
+              {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
             </select>
           </div>
           <div><label className="field-label">Qtd. inicial</label><input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} /></div>

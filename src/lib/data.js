@@ -106,6 +106,37 @@ export async function deleteMovements(ids) {
   if (error) throw error
 }
 
+// ---------- Importação de nota fiscal (XML) ----------
+export async function findInvoiceImport(accessKey) {
+  const { data, error } = await supabase
+    .from('invoice_imports')
+    .select('id, number, created_at')
+    .eq('access_key', accessKey)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function listSupplierProducts(supplierCnpj) {
+  if (!supplierCnpj) return []
+  const { data, error } = await supabase
+    .from('supplier_products')
+    .select('supplier_code, material_id')
+    .eq('supplier_cnpj', supplierCnpj)
+  if (error) throw error
+  return data
+}
+
+// Lança a nota inteira no banco (tudo ou nada) — função import_invoice da migration_8
+export async function importInvoice(payload) {
+  const { data, error } = await supabase.rpc('import_invoice', { p: payload })
+  if (error) {
+    if (String(error.message).includes('NOTA_JA_IMPORTADA')) throw new Error('Esta nota fiscal já foi importada antes.')
+    throw error
+  }
+  return data
+}
+
 // Registra uma movimentação de estoque (entrada soma, saída subtrai) e atualiza o saldo do material
 export async function registerStockUpdate({ material, type, amount, unitPrice, invoiceNumber, purchaseDate, destination, description, responsible, userId }) {
   const qty = Number(amount)
