@@ -44,7 +44,7 @@ Aplicação web para controle de inventário (veículos, máquinas, equipamentos
 
 ## Ambiente local
 - Repositório em `C:\Users\custo\granja-invent-rio` (Git e Node instalados via winget). `.env.local` com URL e chave anon (ignorado pelo Git).
-- Supabase gratuito pausa após ~7 dias sem uso: se o host não resolver, o usuário precisa clicar em "Restore project" no painel.
+- Supabase gratuito pausa após ~7 dias sem uso. O GitHub Action `.github/workflows/manter-supabase-ativo.yml` consulta o banco todo dia (pega URL e chave anon do bundle publicado, sem secrets) para evitar a pausa. Se mesmo assim pausar (ou o GitHub desligar a tarefa após 60 dias sem commits), o usuário clica em "Resume project" no painel e reativa a tarefa na aba Actions.
 - `src/pages/Maintenance.jsx` existe no repositório mas não está ligada a nenhuma rota.
 
 ## Histórico

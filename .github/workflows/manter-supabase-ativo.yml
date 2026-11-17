@@ -1,0 +1,53 @@
+# Mantém o Supabase (plano gratuito) sempre ativo.
+# O Supabase pausa o projeto depois de ~7 dias sem acesso. Esta tarefa roda
+# todo dia, sozinha, no GitHub e faz uma consulta pequena no banco (só leitura).
+# Ela descobre o endereço e a chave pública (anon) no próprio site publicado,
+# então nenhuma senha ou chave precisa ficar guardada no GitHub.
+#
+# Para rodar na hora: GitHub > aba "Actions" > "Manter Supabase ativo" > "Run workflow".
+# Atenção: o GitHub desliga tarefas agendadas de repositórios sem nenhuma alteração
+# por 60 dias e avisa por e-mail; nesse caso é só clicar em "Enable workflow" na aba Actions.
+
+name: Manter Supabase ativo
+
+on:
+  schedule:
+    - cron: '17 9 * * *' # todo dia às 09:17 UTC (06:17 em Brasília)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Acessar o banco do sistema
+        env:
+          SITE: https://granja-invent-rio.vercel.app
+        run: |
+          set -eu
+          js_path=$(curl -fsS "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
+          if [ -z "$js_path" ]; then echo "Não achei o arquivo do site em $SITE"; exit 1; fi
+          bundle=$(curl -fsS "$SITE$js_path")
+          url=$(printf '%s' "$bundle" | grep -o 'https://[a-z0-9]*\.supabase\.co' | head -1)
+          key=$(printf '%s' "$bundle" | grep -oE 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' | head -1)
+          if [ -z "$url" ] || [ -z "$key" ]; then echo "Não achei o endereço do Supabase no site"; exit 1; fi
+          echo "::add-mask::$key"
+
+          ok=""
+          for tentativa in 1 2 3; do
+            code=$(curl -s -o resposta.txt -w '%{http_code}' -m 30 \
+              "$url/rest/v1/materials?select=id&limit=1" \
+              -H "apikey: $key" -H "Authorization: Bearer $key" || true)
+            echo "Tentativa $tentativa: resposta $code"
+            if [ "$code" = "200" ]; then ok=1; break; fi
+            sleep 20
+          done
+
+          if [ -z "$ok" ]; then
+            echo "O Supabase não respondeu. Se o projeto estiver pausado, reative em https://supabase.com/dashboard"
+            exit 1
+          fi
+          echo "Supabase ativo."
